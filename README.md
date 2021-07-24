@@ -1,2 +1,4 @@
 # kards-tools
- Typescript files for interacting with the kards backend
+Library used for interacting with the kards backend
+
+Includes other library functions that are used by multiple kards-stats projects
