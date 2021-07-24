@@ -12,7 +12,7 @@
     "build/index.*"
   ],
   "scripts": {
-    "test": "npm run build && nyc --reporter=clover --reporter=html --reporter=text --all jest",
+    "test": "npm run build && nyc --reporter=clover --reporter=text --all jest",
     "build": "tsc",
     "build:check": "tsc --noEmit",
     "lint": "ts-standard --fix",
