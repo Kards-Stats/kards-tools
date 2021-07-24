@@ -3,7 +3,7 @@ on:
   release:
     types: [created]
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest 
     permissions: 
       contents: read
@@ -19,9 +19,3 @@ jobs:
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - uses: actions/setup-node@v2
-        with:
-          registry-url: 'https://npm.pkg.github.com'
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
