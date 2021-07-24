@@ -1,5 +1,5 @@
 {
-  "name": "kards-tools",
+  "name": "@kards-stats/kards-tools",
   "version": "0.1.0",
   "description": "Tools for interacting with the kards backend as well as utils used across Kards Stats",
   "main": "build/index.js",
