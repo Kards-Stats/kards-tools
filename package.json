@@ -3,12 +3,23 @@
   "version": "0.1.0",
   "description": "Tools for interacting with the kards backend as well as utils used across Kards Stats",
   "main": "build/index.js",
-  "types": "build/types.d.ts",
+  "types": "build/index.d.ts",
+  "files": [
+    "build/backend",
+    "build/connectors",
+    "build/includes",
+    "build/kards",
+    "build/index.*"
+  ],
   "scripts": {
-    "test": "npm run build && nyc --reporter=html --reporter=text --all jest",
+    "test": "npm run build && nyc --reporter=clover --reporter=html --reporter=text --all jest",
     "build": "tsc",
+    "build:check": "tsc --noEmit",
     "lint": "ts-standard --fix",
-    "generate:dev": "env-cmd -e dev ts-node generate-types.ts && ts-standard --fix"
+    "publish:test": "rm -rf package *.tgz && npm run publish:pack && tar -xvzf *.tgz",
+    "publish:pack": "npm run build && npm pack",
+    "publish": "npm run build && npm publish",
+    "dev:generate": "env-cmd -e dev ts-node generate-types.ts && ts-standard --fix"
   },
   "repository": {
     "type": "git",

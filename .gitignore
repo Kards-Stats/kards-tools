@@ -54,3 +54,6 @@ localdev-config.json
 .env-cmdrc
 
 build/
+
+package
+*.tgz
