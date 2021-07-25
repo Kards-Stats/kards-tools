@@ -42,8 +42,8 @@ interface SteamUserDocument extends mongoose.Document {
 export default class MongoDBSteamUserConnector implements SteamAccountConnector {
   steamUserModel: mongoose.Model<SteamUserDocument>
 
-  constructor (collectionName: string) {
-    this.steamUserModel = mongoose.model(collectionName, SteamUserSchema)
+  constructor (collectionName: string, connection: mongoose.Connection) {
+    this.steamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
   }
 
   formatSteamUser (document: SteamUserDocument | null): SteamUser | null {
