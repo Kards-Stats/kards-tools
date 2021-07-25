@@ -1,5 +1,2 @@
-import MongoDBSteamUserConnector from './mongodb'
-
-export default {
-  MongoDBSteamUserConnector
-}
+export { default as MongoDBSteamUserConnector } from './mongodb'
+export { SteamAccountConnector } from './types'

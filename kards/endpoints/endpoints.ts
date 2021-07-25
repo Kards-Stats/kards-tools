@@ -1,9 +1,9 @@
-import { getCurrentLogger } from '../includes/logger'
+import { getCurrentLogger } from '../../includes/logger'
 import Q from 'q'
 import winston from 'winston'
-import { authenticatedRequest } from './kards-request'
-import Session from './session'
-import { Endpoints } from '../types/kards-backend'
+import { authenticatedRequest } from '../kards-request'
+import Session from '../session'
+import { Endpoints } from '../../types/kards-backend'
 import _ from 'underscore'
 
 const logger: winston.Logger = getCurrentLogger('includes-endpoints')

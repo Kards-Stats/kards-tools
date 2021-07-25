@@ -1,5 +1,1 @@
-import Cards from './cards'
-
-export default {
-  Cards
-}
+export { default as Cards } from './cards'

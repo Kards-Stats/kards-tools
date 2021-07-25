@@ -1,11 +1,4 @@
-import backend from './backend'
-import includes from './includes'
-import kards from './kards'
-import connectors from './connectors'
-
-export default {
-  backend,
-  includes,
-  kards,
-  connectors
-}
+export * as backend from './backend'
+export * as includes from './includes'
+export * as kards from './kards'
+export * as connectors from './connectors'

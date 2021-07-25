@@ -1,7 +1,7 @@
 import { getCurrentLogger } from '../includes/logger'
 import Q from 'q'
 import KardsApiError from './kards-api-error'
-import { getKardsSessionEndpoint } from './public-endpoints'
+import { getKardsSessionEndpoint } from './endpoints'
 import { Session as SessionType } from '../types/kards-backend'
 import winston from 'winston'
 import crypto from 'crypto'
