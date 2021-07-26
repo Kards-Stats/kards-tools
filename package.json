@@ -9,7 +9,8 @@
     "build/connectors",
     "build/includes",
     "build/kards",
-    "build/index.*"
+    "build/index.*",
+    "types/*.d.ts"
   ],
   "scripts": {
     "test": "npm run build && nyc --reporter=clover --reporter=text --all jest",
