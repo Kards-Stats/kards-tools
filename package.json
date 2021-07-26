@@ -19,7 +19,6 @@
     "lint": "ts-standard --fix",
     "publish:test": "rm -rf package *.tgz && npm run publish:pack && tar -xvzf *.tgz",
     "publish:pack": "npm run build && npm pack",
-    "publish": "npm run build && npm publish",
     "dev:generate": "env-cmd -e dev ts-node generate-types.ts && ts-standard --fix"
   },
   "repository": {
