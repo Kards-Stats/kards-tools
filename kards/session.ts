@@ -10,7 +10,7 @@ import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import _ from 'underscore'
 import { SteamAccountConnector } from '../connectors/types'
 import { SteamUser as SteamUserType } from '../types/backend'
-import SteamUser = require('steam-user')
+import SteamUser from 'steam-user'
 
 const logger: winston.Logger = getCurrentLogger('includes-session')
 
@@ -121,7 +121,7 @@ export default class KardsSession {
   }
 
   async getSession (tryNum = 0, username = 'oldest'): Promise<SessionType> {
-    logger.silly('getSession')
+    logger.silly(`getSession(${tryNum}, ${username})`)
     const deferred = Q.defer()
     if (tryNum > 3) {
       return await Promise.reject(new Error('max retries'))
@@ -243,7 +243,7 @@ export default class KardsSession {
   }
 
   async refreshSteam (username: string): Promise<string> {
-    logger.silly('refreshSteam')
+    logger.silly(`refreshSteam(${username})`)
     const deferred = Q.defer()
 
     this.connector.getUser(username).then((steamUser: SteamUserType | null) => {
