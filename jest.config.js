@@ -3,7 +3,14 @@ module.exports = {
   testEnvironment: 'node',
   testPathIgnorePatterns: [
     '/node_modules/',
-    '(/__tests__/.*|(\\.|/)(test|spec))\\.[t]sx?$'
+    '.*\\.js'
   ],
-  clearMocks: true
+  clearMocks: true,
+  collectCoverage: true,
+  coverageDirectory: 'coverage',
+  coverageProvider: 'v8',
+  coverageReporters: [
+    'text',
+    'clover'
+  ]
 }
