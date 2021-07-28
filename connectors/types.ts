@@ -1,6 +1,7 @@
 import { SteamUser } from '../types/backend'
 
 export interface SteamAccountConnector {
+  addSteamUser: (username: string, password: string, type: string) => Promise<SteamUser | null>
   getUnbanned: (type: string) => Promise<SteamUser[] | null>
   getUser: (username: string) => Promise<SteamUser | null>
   getOldest: (type: string) => Promise<SteamUser | null>

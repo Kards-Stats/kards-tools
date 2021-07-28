@@ -46,6 +46,32 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
   }
 
+  async addSteamUser (username: string, password: string, type: string): Promise<SteamUser | null> {
+    const deferred = Q.defer()
+    if (username === '' ||
+      password === '' ||
+      type === '') {
+      return await Promise.reject(new Error('Empty arguments for addSteamUser'))
+    }
+    const date = new Date(0)
+    const data: SteamUser = {
+      username: username,
+      password: password,
+      type: type,
+      banned: false,
+      last_steam_login: date,
+      last_kards_login: date
+    }
+    const model = new this.SteamUserModel(data)
+    model.save().then((value) => {
+      return deferred.resolve(this.formatSteamUser(value))
+    }).catch((e: any) => {
+      /* istanbul ignore next */
+      return deferred.reject(e)
+    })
+    return deferred.promise as any as Promise<SteamUser | null>
+  }
+
   formatSteamUser (document: SteamUserDocument | null): SteamUser | null {
     if (document === null) {
       return null
@@ -71,7 +97,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async getUnbanned (type = '*'): Promise<SteamUser[] | null> {
-    logger.silly('getUnbanned')
+    logger.silly(`getUnbanned(${type})`)
     const deferred = Q.defer()
     const query = type !== '*' ? { type: type, banned: false } : { banned: false }
     this.SteamUserModel.find(query).then((results: SteamUserDocument[]) => {
@@ -83,7 +109,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async getUser (user: string): Promise<SteamUser | null> {
-    logger.silly('getUser')
+    logger.silly(`getUser(${user})`)
     const deferred = Q.defer()
     const query = { username: user }
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
@@ -95,7 +121,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async getOldest (type = '*'): Promise<SteamUser | null> {
-    logger.silly('getOldest')
+    logger.silly(`getOldest(${type})`)
     const deferred = Q.defer()
     const query = type !== '*' ? { type: type, banned: false } : { banned: false }
     this.SteamUserModel.findOne(query, null, { sort: { last_steam_login: 1 } }).then((result: SteamUserDocument | null) => {
@@ -107,7 +133,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async addSteamLogin (user: string, steamId: string, ticket: string): Promise<SteamUser | null> {
-    logger.silly('getOldest')
+    logger.silly(`addSteamLogin(${user}, ${steamId}, ${ticket})`)
     const deferred = Q.defer()
     const query = { username: user }
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
@@ -129,7 +155,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async setBanned (user: string, banned: boolean): Promise<SteamUser | null> {
-    logger.silly('setBanned')
+    logger.silly(`setBanned(${user}, ${banned ? 'true' : 'false'})`)
     const deferred = Q.defer()
     const query = { username: user }
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
@@ -151,7 +177,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   }
 
   async addKardsLogin (user: string): Promise<SteamUser | null> {
-    logger.silly('getOldest')
+    logger.silly(`addKardsLogin(${user})`)
     const deferred = Q.defer()
     const query = { username: user }
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
