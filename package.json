@@ -30,6 +30,9 @@
   "bugs": {
     "url": "https://github.com/Kards-Stats/kards-tools/issues"
   },
+  "engines": {
+    "node": ">=14.0.0"
+  },
   "transform": {
     "\\.[jt]sx?$": "babel-jest"
   },
