@@ -65,8 +65,8 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     const model = new this.SteamUserModel(data)
     model.save().then((value) => {
       return deferred.resolve(this.formatSteamUser(value))
-    }).catch((e: any) => {
-      /* istanbul ignore next */
+    }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -88,7 +88,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     }
   }
 
-  formatSteamUsers (documents: Array<SteamUserDocument | null>): Array<SteamUser | null> {
+  formatSteamUsers (documents: SteamUserDocument[]): Array<SteamUser | null> {
     var steamUsers: Array<SteamUser | null> = []
     for (var document of documents) {
       steamUsers.push(this.formatSteamUser(document))
@@ -96,16 +96,17 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     return steamUsers
   }
 
-  async getUnbanned (type = '*'): Promise<SteamUser[] | null> {
+  async getUnbanned (type = '*'): Promise<Array<SteamUser | null>> {
     logger.silly(`getUnbanned(${type})`)
     const deferred = Q.defer()
     const query = type !== '*' ? { type: type, banned: false } : { banned: false }
     this.SteamUserModel.find(query).then((results: SteamUserDocument[]) => {
       return deferred.resolve(this.formatSteamUsers(results))
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
-    return deferred.promise as any as Promise<SteamUser[] | null>
+    return deferred.promise as any as Promise<Array<SteamUser | null>>
   }
 
   async getUser (user: string): Promise<SteamUser | null> {
@@ -115,6 +116,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
       return deferred.resolve(this.formatSteamUser(result))
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -127,6 +129,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel.findOne(query, null, { sort: { last_steam_login: 1 } }).then((result: SteamUserDocument | null) => {
       return deferred.resolve(this.formatSteamUser(result))
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -146,9 +149,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
+        /* c8 ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -168,9 +173,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
+        /* c8 ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -188,9 +195,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
+        /* c8 ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
+      /* c8 ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
