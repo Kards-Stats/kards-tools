@@ -9,6 +9,16 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageProvider: 'v8',
+  collectCoverageFrom: [
+    '**/*.ts',
+    '!**/types.ts',
+    '!**/node_modules/**',
+    '!**/build/**',
+    '!**/coverage/**',
+    '!**/lib/**',
+    '!**/logs/**',
+    '!**/package/**'
+  ],
   coverageReporters: [
     'text',
     'clover'
