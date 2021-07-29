@@ -37,7 +37,7 @@ jobs:
     - run: npm test
     - uses: codecov/codecov-action@v2
       with:
-        files: ./coverage/clover.xml
+        files: ./coverage/coverage-final.json
         flags: ${{ matrix.node-version }}
         fail_ci_if_error: true
         verbose: true
