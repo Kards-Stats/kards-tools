@@ -13,7 +13,7 @@
     "types/*.d.ts"
   ],
   "scripts": {
-    "test": "npm run build && jest",
+    "test": "npm run build && jest --verbose --maxWorkers=2",
     "build": "tsc",
     "build:check": "tsc --noEmit",
     "lint": "ts-standard --fix",
