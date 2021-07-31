@@ -9,7 +9,6 @@
         "outDir": "./build",
         "removeComments": false,
         "isolatedModules": false,
-        "emitDeclarationOnly": true,
         "sourceMap": true,
         "inlineSourceMap": false,
         "inlineSources": false,

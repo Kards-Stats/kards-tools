@@ -1,6 +1,6 @@
 {
   "name": "@kards-stats/kards-tools",
-  "version": "0.3.2-alpha",
+  "version": "0.3.3-alpha",
   "description": "Tools for interacting with the kards backend as well as utils used across Kards Stats",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -14,11 +14,12 @@
   ],
   "scripts": {
     "test": "npm run build && jest --verbose --maxWorkers=2",
-    "build": "tsc",
-    "build:check": "tsc --noEmit",
+    "build": "npm run clean && tsc",
+    "build:check": "npm run clean && tsc --noEmit",
     "lint": "ts-standard --fix",
-    "publish:test": "rm -rf package *.tgz && npm run publish:pack && tar -xvzf *.tgz",
-    "publish:pack": "npm run build && npm pack",
+    "clean": "rm -rf package build *.tgz",
+    "publish:test": "npm run publish:pack && tar -xvzf *.tgz",
+    "publish:pack": "npm run clean && npm run build && npm pack",
     "dev:generate": "env-cmd -e dev ts-node generate-types.ts && ts-standard --fix"
   },
   "repository": {
