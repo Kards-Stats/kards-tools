@@ -1,16 +1,8 @@
 import winston from 'winston'
 import { getCurrentLogger } from '../includes/logger'
+import { KardsApiErrorJson } from '../types/kards-web'
 
 const logger: winston.Logger = getCurrentLogger('includes-kards-api-error')
-
-export interface KardsApiErrorJson {
-  status_code: number
-  message: string
-  error: {
-    code: string
-    description: string
-  }
-}
 
 export default class KardsApiError extends Error {
   status_code: number

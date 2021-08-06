@@ -1,4 +1,4 @@
-export type Maybe<T> = T | null
+export type Maybe<T> = T | null | undefined
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
 export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> }
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> }
@@ -152,16 +152,16 @@ export interface DeckNode {
   node: Deck
 }
 
-export enum DeckOrderType {
-  Desc = 'desc',
-  Asc = 'asc'
-}
+export type DeckOrderType =
+  | 'desc'
+  | 'asc'
+  | '%future added value'
 
-export enum DeckSortType {
-  Week = 'week',
-  Month = 'month',
-  Updated = 'updated'
-}
+export type DeckSortType =
+  | 'week'
+  | 'month'
+  | 'updated'
+  | '%future added value'
 
 export interface DeckVersion {
   __typename?: 'DeckVersion'
@@ -212,11 +212,11 @@ export interface GameVersionNode {
   node: GameVersion
 }
 
-export enum ImageTypes {
-  Default = 'default',
-  Thumb = 'thumb',
-  Tiny = 'tiny'
-}
+export type ImageTypes =
+  | 'default'
+  | 'thumb'
+  | 'tiny'
+  | '%future added value'
 
 export interface Language {
   __typename?: 'Language'
@@ -310,13 +310,13 @@ export interface Set {
   name: Scalars['String']
 }
 
-export enum SocialLoginProvider {
-  Google = 'google',
-  Twitch = 'twitch',
-  Discord = 'discord',
-  Vk = 'vk',
-  Facebook = 'facebook'
-}
+export type SocialLoginProvider =
+  | 'google'
+  | 'twitch'
+  | 'discord'
+  | 'vk'
+  | 'facebook'
+  | '%future added value'
 
 export interface Stats {
   __typename?: 'Stats'
@@ -342,10 +342,10 @@ export interface ThreadNode {
   node?: Maybe<Thread>
 }
 
-export enum TopDeckType {
-  Week = 'week',
-  Month = 'month'
-}
+export type TopDeckType =
+  | 'week'
+  | 'month'
+  | '%future added value'
 
 export interface User {
   __typename?: 'User'
@@ -385,10 +385,10 @@ export interface UserPayload {
   user?: Maybe<User>
 }
 
-export enum Visibility {
-  Public = 'public',
-  Unlisted = 'unlisted'
-}
+export type Visibility =
+  | 'public'
+  | 'unlisted'
+  | '%future added value'
 
 export interface Vote {
   __typename?: 'Vote'
@@ -401,4 +401,13 @@ export interface VotePayLoad {
   error?: Maybe<Scalars['String']>
   vote?: Maybe<Vote>
   newScore?: Maybe<Score>
+}
+
+export interface KardsApiErrorJson {
+  status_code: Scalars['Int']
+  message: Scalars['String']
+  error: {
+    code: Scalars['String']
+    description: Scalars['String']
+  }
 }

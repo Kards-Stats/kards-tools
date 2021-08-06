@@ -81,6 +81,16 @@ getSchema().then((schemaString) => {
     logger.silly('Code gen-ing')
     codegen(config).then((output) => {
       logger.silly('File saving')
+      output += `
+      export interface KardsApiErrorJson {
+        status_code: Scalars['Int']
+        message: Scalars['String']
+        error: {
+          code: Scalars['String']
+          description: Scalars['String']
+        }
+      }
+      `
       fs.writeFile(outputFile, output, () => {
         logger.info('TS generated!')
         process.exit(0)
