@@ -43,6 +43,9 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   SteamUserModel: mongoose.Model<SteamUserDocument>
 
   constructor (collectionName: string, connection: mongoose.Connection) {
+    if (connection === null || connection.readyState !== 1) {
+      throw new Error('Connection doesnt exist or isnt ready')
+    }
     this.SteamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
   }
 

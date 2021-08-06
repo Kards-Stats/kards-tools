@@ -86,6 +86,14 @@ const steamFull: SteamUser = {
   last_steam_login: now,
   last_kards_login: now
 }
+describe('Constructor', () => {
+  it('Should Throw for no connection', async () => {
+    expect(() => {
+      new MongoDBSteamUserConnector('SteamUser', db.getConnection())
+    }).toThrow()
+  })
+})
+
 describe('addSteamUser', () => {
   var connector: MongoDBSteamUserConnector
   beforeAll(async () => {
