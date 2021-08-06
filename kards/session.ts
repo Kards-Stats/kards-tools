@@ -208,6 +208,7 @@ export default class KardsSession {
         }
       }).catch((e) => {
         logger.error(e)
+        return deferred.reject(e)
       })
     } else {
       logger.silly('already have session')
