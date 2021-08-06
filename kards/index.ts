@@ -1,5 +1,5 @@
 export * as request from './kards-request'
 export * as endpoints from './endpoints'
 export { default as KardsSession } from './session'
-export { default as KardsApiError, KardsApiErrorJson } from './kards-api-error'
+export { default as KardsApiError } from './kards-api-error'
 export { default as KardsVersion } from './version'
