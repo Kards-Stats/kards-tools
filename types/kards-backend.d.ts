@@ -197,6 +197,103 @@ interface Config {
   [key: string]: any
 }
 
+interface MatchInfo {
+  player_status_left?: string
+  player_status_right?: string
+  status: string
+}
+
+interface Match {
+  actions: XAction[]
+  match?: MatchInfo
+}
+
+interface ActionData {
+  reason?: string
+  winner_side?: string
+  cardID?: number
+  card_name?: string
+  enterPlayOnTurn?: number
+  location?: string
+  locationNumber?: number
+  side?: string
+  attackerCardID?: number
+  attacker_card_name?: string
+  defenderCardID?: number
+  defender_card_name?: string
+  [key: string]: any
+}
+
+interface XAction {
+  action_id: number
+  action_type: string
+  player_id: number
+  side: string
+  sub_actions?: ZAction[]
+  turn_number: number
+  action_data: ActionData
+}
+
+interface ZAction {
+  attackerAttackLeft?: number
+  attackerCardID?: number
+  attackerDefense?: number
+  attackerDestroyed?: number
+  attackerHasEverAttacked?: number
+  attackerLocation?: string
+  attackerMovementLeft?: number
+  damageAttacker?: number
+  damageDefender?: number
+  defenderCardID?: number
+  defenderDefense?: number
+  defenderDestroyed?: number
+  defenderLocation?: string
+  name: string
+  newKredits?: number
+  newMaxKredits?: number
+  oldKredits?: number
+  oldMaxKredits?: number
+  newResources?: number
+  newMaxResources?: number
+  oldResources?: number
+  oldMaxResources?: number
+  side?: string
+  triggerCardID?: number
+  cardID?: number
+  customJson?: string
+  customJson1?: string
+  customJson2?: string
+  duration?: number
+  gained?: number
+  instigatorID?: number
+  isBuff?: number
+  newAttackValue?: number
+  enterPlayOnTurn?: number
+  location?: string
+  locationNumber?: number
+  nonVisualLocationNumber?: number
+  targetCardID?: number
+  cardType?: string | number
+  skipDrawAnimation?: number
+  spawnInHand?: number
+  oldLocation?: string
+  effect?: string
+  newDefenseValue?: number
+  oldDefense?: number
+  damage?: number
+  destroyed?: number | string
+  discarderID?: number
+  lost?: number
+  cardIDs?: number | string
+  damageReceived?: string
+  damageReceiverIDs?: string
+  destroyerCardID?: number
+  destroyerID?: number
+  cardsToDestroy?: string
+  newLocation?: string
+  [key: string]: any
+}
+
 export {
   Config,
   Home,
@@ -205,5 +302,10 @@ export {
   BuildInfo,
   HostInfo,
   Session,
-  LoginReward
+  LoginReward,
+  Match,
+  XAction,
+  ZAction,
+  MatchInfo,
+  ActionData
 }
