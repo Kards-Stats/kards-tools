@@ -9,7 +9,7 @@ import { publicPost, getPath, kardsRequest } from './kards-request'
 import { ToadScheduler, SimpleIntervalJob, AsyncTask } from 'toad-scheduler'
 import _ from 'underscore'
 import { SteamAccountConnector } from '../connectors/types'
-import { SteamUser as SteamUserType } from '../types/backend'
+import { SteamUser as SteamUserType, Keyable } from '../types/backend'
 import SteamUser from 'steam-user'
 
 const logger: winston.Logger = getCurrentLogger('includes-session')
@@ -20,6 +20,12 @@ function randU32Sync (): number {
   return crypto.randomBytes(4).readUInt32BE(0)
 }
 
+interface InternalSteamUser {
+  username: string
+  steam_id: string
+  ticket: string
+}
+
 export default class KardsSession {
   scheduler: ToadScheduler
   heartbeatTask: AsyncTask | undefined
@@ -27,6 +33,8 @@ export default class KardsSession {
   session: SessionType | undefined
   type: string
   connector: SteamAccountConnector
+  authenticating: boolean
+  steamUser?: InternalSteamUser
 
   constructor (type: string, connector: SteamAccountConnector) {
     logger.info(`Generating session for ${type}`)
@@ -36,6 +44,7 @@ export default class KardsSession {
     this.session = undefined
     this.type = type
     this.connector = connector
+    this.authenticating = false
   }
 
   private stopHeartbeat (): void {
@@ -122,102 +131,132 @@ export default class KardsSession {
 
   async getSession (tryNum = 0, username = 'oldest'): Promise<SessionType> {
     logger.silly(`getSession(${tryNum}, ${username})`)
-    const deferred = Q.defer()
     if (tryNum > 3) {
       return await Promise.reject(new Error('max retries'))
     }
     if (this.needsNewSession()) {
       logger.silly('new session needed')
-      var promise: Promise<SteamUserType | null>
-      if (username === 'oldest') {
-        promise = this.connector.getOldest(this.type)
+      if (this.authenticating) {
+        logger.silly('Already authenticating')
+        await this.waitForAuthentication()
+        var steamUser = await this.getInternalUser(username)
+        return await this.getSession(tryNum + 1, steamUser?.username ?? 'oldest')
       } else {
-        promise = this.connector.getUser(username)
-      }
-      promise.then((steamUser: SteamUserType | null) => {
-        if (steamUser === null) { return deferred.reject(new Error('No more steam accounts to use')) }
-        if (steamUser.ticket === undefined || steamUser.steam_id === undefined) {
-          logger.silly('steam values empty')
-          this.refreshSteam(steamUser.username).then(() => {
-            this.getSession(tryNum + 1, steamUser.username).then((session) => {
-              return deferred.resolve(session)
-            }).catch((e) => {
-              return deferred.reject(e)
-            })
-          }).catch((e) => {
-            return deferred.reject(e)
+        this.authenticating = true
+        try {
+          steamUser = await this.getInternalUser(username)
+          if (steamUser === undefined) {
+            return await this.getSession(tryNum + 1)
+          }
+          var endpoint = await getKardsSessionEndpoint()
+          logger.silly('endpoint: ' + endpoint)
+          var postData = JSON.stringify({
+            provider: 'steam',
+            provider_details: {
+              steam_id: steamUser.steam_id,
+              ticket: steamUser.ticket,
+              appid: process.env.kards_app_id
+            },
+            client_type: 'UE4',
+            build: 'Kards 1.1.4233',
+            platform_type: '',
+            app_guid: 'Kards',
+            version: '?',
+            platform_info: '',
+            platform_version: '',
+            automatic_account_creation: true,
+            username: `steam:${steamUser.steam_id ?? ''}`,
+            password: `steam:${steamUser.steam_id ?? ''}`
           })
-        } else {
-          getKardsSessionEndpoint().then((endpoint) => {
-            logger.silly('endpoint: ' + endpoint)
-            var postData = JSON.stringify({
-              provider: 'steam',
-              provider_details: {
-                steam_id: steamUser.steam_id,
-                ticket: steamUser.ticket,
-                appid: process.env.kards_app_id
-              },
-              client_type: 'UE4',
-              build: 'Kards 1.1.4233',
-              platform_type: '',
-              app_guid: 'Kards',
-              version: '?',
-              platform_info: '',
-              platform_version: '',
-              automatic_account_creation: true,
-              username: `steam:${steamUser.steam_id ?? ''}`,
-              password: `steam:${steamUser.steam_id ?? ''}`
-            })
-            publicPost(getPath(endpoint), postData).then((result) => {
-              this.connector.addKardsLogin(steamUser.username).then(() => {
-                if (_.isObject(result)) {
-                  this.session = result as SessionType
-                  this.startHeartbeat()
-                  return deferred.resolve(this.session)
-                }
-                return deferred.reject(new Error('Result isnt object'))
-              }).catch((e) => {
-                return deferred.reject(e)
-              })
-            }).catch((e) => {
-              console.log(e)
-              if (e instanceof KardsApiError && e.status_code === 401) {
-                var banned = false
-                if (e.message.toLowerCase().includes('disabled')) {
-                  // Account Banned
-                  banned = true
-                }
-                // Possible steam auth timeout
-                this.connector.setBanned(steamUser.username, banned).then(() => {
-                  this.getSession(tryNum + 1).then((session) => {
-                    return deferred.resolve(session)
-                  }).catch((e) => {
-                    return deferred.reject(e)
-                  })
-                }).catch((e) => {
-                  return deferred.reject(e)
-                })
-              } else {
-                logger.silly('Kards session error')
-                return deferred.reject(e)
+          let result: Keyable | string | undefined
+          try {
+            result = await publicPost(getPath(endpoint), postData)
+          } catch (e) {
+            console.log(e)
+            if (e instanceof KardsApiError && e.status_code === 401) {
+              var banned = false
+              if (e.message.toLowerCase().includes('disabled')) {
+                // Account Banned
+                banned = true
               }
-            })
-          }).catch((e) => {
-            return deferred.reject(e)
-          })
+              // Possible steam auth timeout
+              await this.connector.setBanned(steamUser.username, banned)
+              this.steamUser = undefined
+              this.authenticating = false
+              return await this.getSession(tryNum + 1)
+            } else {
+              logger.silly('Kards session error')
+              throw e
+            }
+          }
+          await this.connector.addKardsLogin(steamUser.username)
+          if (_.isObject(result)) {
+            this.session = result as SessionType
+            this.startHeartbeat()
+            this.authenticating = false
+            return this.session
+          }
+          throw new Error('Result isnt object')
+        } finally {
+          this.authenticating = false
         }
-      }).catch((e) => {
-        logger.error(e)
-        return deferred.reject(e)
-      })
+      }
     } else {
       logger.silly('already have session')
-      return new Promise<SessionType>((resolve, reject) => {
-        if (this.session === undefined) { return reject(new Error('Session invalidated before it was returned')) }
-        return resolve(this.session)
-      })
+      if (this.session === undefined) { throw new Error('Session invalidated before it was returned') }
+      return this.session
     }
-    return deferred.promise as any as Promise<SessionType>
+  }
+
+  async getInternalUser (fallback = 'oldest'): Promise<InternalSteamUser | undefined> {
+    if (this.steamUser === undefined) {
+      this.authenticating = true
+      var steamUser = await this.getUser(fallback)
+      if (steamUser === null) {
+        this.authenticating = false
+        throw new Error('No more steam accounts to use')
+      }
+      if (steamUser.ticket === undefined || steamUser.steam_id === undefined) {
+        logger.silly('steam values empty')
+        try {
+          await this.refreshSteam(steamUser.username)
+        } finally {
+          this.authenticating = false
+        }
+      } else {
+        this.steamUser = {
+          username: steamUser.username,
+          steam_id: steamUser.steam_id,
+          ticket: steamUser.ticket
+        }
+      }
+      this.authenticating = false
+      return this.steamUser
+    } else {
+      return this.steamUser
+    }
+  }
+
+  async getUser (username = 'oldest'): Promise<SteamUserType | null> {
+    if (username === 'oldest') {
+      return await this.connector.getOldest(this.type)
+    } else {
+      return await this.connector.getUser(username)
+    }
+  }
+
+  async waitForAuthentication (timeout: number = 30): Promise<void> {
+    if (!this.authenticating) {
+      return
+    }
+    var tries: number = 0
+    while (this.authenticating) {
+      if (tries >= timeout) {
+        return
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      tries += 1
+    }
   }
 
   needsNewSession (): boolean {
@@ -246,6 +285,7 @@ export default class KardsSession {
   async refreshSteam (username: string): Promise<string> {
     logger.silly(`refreshSteam(${username})`)
     const deferred = Q.defer()
+    this.steamUser = undefined
 
     this.connector.getUser(username).then((steamUser: SteamUserType | null) => {
       if (steamUser == null) {
@@ -289,6 +329,11 @@ export default class KardsSession {
             details.client_supplied_steamid,
             ticket.toString('hex'))
             .then(() => {
+              this.steamUser = {
+                username: steamUser.username,
+                steam_id: details.client_supplied_steamid,
+                ticket: ticket.toString('hex')
+              }
               return deferred.resolve(ticket.toString('hex'))
             }).catch((e) => {
               return deferred.reject(e)
