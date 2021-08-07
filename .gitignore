@@ -7,13 +7,14 @@ launchConfigurations/
 /.nyc_output/
 .npmrc
 .npmrc_template
-coverage
 
 # Compiled code
 public
-
-# Compiled binary addons (http://nodejs.org/api/addons.html)
-build/Release
+build
+lib
+coverage
+package
+*.tgz
 
 # Dependency directories
 node_modules
@@ -41,20 +42,10 @@ npm-debug.log*
 .AppleDouble
 .LSOverride
 
-# Binary or compiled files
-.idea
-/out
-/bin
-
-# This config should NOT be on Git
-localdev-config.json
-/localdev-config.json
-
+# Environment files
 .env
 .env-cmdrc
 
-build/
-lib
-
-package
-*.tgz
+# JSON Data, usually sensative data for tests
+*.json
+!*.example.json
