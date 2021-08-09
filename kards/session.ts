@@ -23,7 +23,7 @@ function randU32Sync (): number {
 interface InternalSteamUser {
   username: string
   steam_id: string
-  ticket: string
+  ticket?: string
 }
 
 export default class KardsSession {
@@ -35,9 +35,15 @@ export default class KardsSession {
   connector: SteamAccountConnector
   authenticating: boolean
   steamUser?: InternalSteamUser
+  steamUserObject?: any
+  kardsAppId: string
+  driftApiKey: string
 
-  constructor (type: string, connector: SteamAccountConnector) {
+  constructor (type: string, connector: SteamAccountConnector, driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835', kardsAppId: string = '544810') {
     logger.info(`Generating session for ${type}`)
+    if (kardsAppId === '' || driftApiKey === '') {
+      throw new Error('Invalid app id or drift api key')
+    }
     this.scheduler = new ToadScheduler()
     this.heartbeatTask = undefined
     this.heartbeatJob = undefined
@@ -45,8 +51,12 @@ export default class KardsSession {
     this.type = type
     this.connector = connector
     this.authenticating = false
+    this.kardsAppId = kardsAppId
+    this.driftApiKey = driftApiKey
+    this.steamUserObject = new SteamUser()
   }
 
+  /* istanbul ignore next */
   private stopHeartbeat (): void {
     if (this.heartbeatJob !== undefined) {
       this.heartbeatJob.stop()
@@ -57,6 +67,7 @@ export default class KardsSession {
     }
   }
 
+  /* istanbul ignore next */
   private startHeartbeat (): boolean {
     this.stopHeartbeat()
     if (this.session === undefined) { return false }
@@ -68,41 +79,84 @@ export default class KardsSession {
           kardsRequest('PUT', {
             'Content-Length': '0',
             Authorization: 'JWT ' + this.session.jwt,
-            'Drift-Api-Key': process.env.kards_drift_api_key
+            'Drift-Api-Key': this.driftApiKey
           }, `/players/${this.session.player_id}/heartbeat`).then((result) => {
             if (_.isObject(result) && Object.hasOwnProperty.call(result, 'last_heartbeat')) {
               if (this.session !== undefined) {
                 this.session.last_heartbeat = result.last_heartbeat
                 return deferred.resolve()
               } else {
-                logger.error('No session after result')
-                this.scheduler.stop()
-                return deferred.reject('No session after result')
+                logger.warn('Heartbeat no session after result')
+                this.stopHeartbeat()
+                this.stopSession().then(() => {
+                  return deferred.reject('No session after result')
+                }).catch((e) => {
+                  logger.warn('Stop session in heartbeat error')
+                  logger.warn(e)
+                  return deferred.reject('No session after result')
+                })
               }
             } else {
-              logger.error('No heartbeat result')
-              this.scheduler.stop()
-              return deferred.reject('No heartbeat result')
+              logger.warn('No heartbeat result')
+              this.stopHeartbeat()
+              this.stopSession().then(() => {
+                return deferred.reject('No heartbeat result')
+              }).catch((e) => {
+                logger.warn('Stop session in heartbeat error')
+                logger.warn(e)
+                return deferred.reject('No heartbeat result')
+              })
             }
           }).catch((e) => {
-            logger.error(e)
+            logger.warn('Heartbeat request error')
             if (e.status_code === 401) { this.session = undefined }
-            this.scheduler.stop()
-            return deferred.reject(e)
+            this.stopHeartbeat()
+            this.stopSession().then(() => {
+              return deferred.reject(e)
+            }).catch(() => {
+              logger.warn('Stop session in heartbeat error')
+              logger.warn(e)
+              return deferred.reject(e)
+            })
           })
         } else {
-          this.scheduler.stop()
-          return Promise.resolve()
+          this.stopHeartbeat()
+          return this.stopSession()
         }
         return deferred.promise as any as Promise<void>
       },
       (e) => {
-        logger.error(e)
+        logger.warn('Heartbeat error')
+        logger.warn(e)
+        this.stopSession().catch((e) => {
+          logger.warn('Stop session in heartbeat error error')
+          logger.warn(e)
+        })
+        this.stopHeartbeat()
       }
     )
     this.heartbeatJob = new SimpleIntervalJob({ seconds: 30 }, this.heartbeatTask)
     this.scheduler.addSimpleIntervalJob(this.heartbeatJob)
     return true
+  }
+
+  async stopSession (): Promise<void> {
+    this.stopHeartbeat()
+    if (this.session === undefined) { return }
+    if (this.needsNewSession()) {
+      this.session = undefined
+      return
+    }
+    try {
+      await kardsRequest('DELETE', {
+        'Content-Length': '0',
+        Authorization: 'JWT ' + this.session.jwt,
+        'Drift-Api-Key': this.driftApiKey
+      }, `/players/${this.session.player_id}/heartbeat`)
+    } catch (e) {
+      logger.info(e)
+    }
+    this.session = undefined
   }
 
   async getJti (): Promise<string> {
@@ -111,7 +165,6 @@ export default class KardsSession {
       // logger.debug(session);
       return deferred.resolve(session.jti)
     }).catch((e) => {
-      logger.error(e)
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<string>
@@ -123,39 +176,39 @@ export default class KardsSession {
       // logger.debug(session);
       return deferred.resolve(session.player_id)
     }).catch((e) => {
-      logger.error(e)
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<string>
   }
 
-  async getSession (tryNum = 0, username = 'oldest'): Promise<SessionType> {
+  async getSession (tryNum = 0, username = 'oldest', skipAuthCheck: boolean = false): Promise<SessionType> {
     logger.silly(`getSession(${tryNum}, ${username})`)
+    // const deferred = Q.defer()
     if (tryNum > 3) {
-      return await Promise.reject(new Error('max retries'))
+      throw new Error('max retries')
     }
-    if (this.needsNewSession()) {
+    if (this.session === undefined || this.needsNewSession()) {
+      // process.nextTick(async () => {
       logger.silly('new session needed')
-      if (this.authenticating) {
+      if (this.authenticating && !skipAuthCheck) {
         logger.silly('Already authenticating')
         await this.waitForAuthentication()
-        var steamUser = await this.getInternalUser(username)
-        return await this.getSession(tryNum + 1, steamUser?.username ?? 'oldest')
+        var session = await this.getSession(tryNum + 1, username)
+        /* istanbul ignore next */
+        return session
+        // return deferred.resolve(session)
       } else {
         this.authenticating = true
         try {
-          steamUser = await this.getInternalUser(username)
-          if (steamUser === undefined) {
-            return await this.getSession(tryNum + 1)
-          }
-          var endpoint = await getKardsSessionEndpoint()
+          var steamUser = await this.getInternalUser(username)
+          var endpoint = await getKardsSessionEndpoint(this.driftApiKey)
           logger.silly('endpoint: ' + endpoint)
           var postData = JSON.stringify({
             provider: 'steam',
             provider_details: {
               steam_id: steamUser.steam_id,
               ticket: steamUser.ticket,
-              appid: process.env.kards_app_id
+              appid: this.kardsAppId
             },
             client_type: 'UE4',
             build: 'Kards 1.1.4233',
@@ -170,9 +223,9 @@ export default class KardsSession {
           })
           let result: Keyable | string | undefined
           try {
-            result = await publicPost(getPath(endpoint), postData)
+            result = await publicPost(getPath(endpoint), postData, this.driftApiKey)
           } catch (e) {
-            console.log(e)
+            /* istanbul ignore else */
             if (e instanceof KardsApiError && e.status_code === 401) {
               var banned = false
               if (e.message.toLowerCase().includes('disabled')) {
@@ -182,62 +235,73 @@ export default class KardsSession {
               // Possible steam auth timeout
               await this.connector.setBanned(steamUser.username, banned)
               this.steamUser = undefined
-              this.authenticating = false
-              return await this.getSession(tryNum + 1)
+              session = await this.getSession(tryNum + 1, 'oldest', true)
+              /* istanbul ignore next */
+              // return deferred.resolve(this.session)
+              return session
             } else {
               logger.silly('Kards session error')
+              this.authenticating = false
+              // return deferred.reject(e)
               throw e
             }
           }
+          /* istanbul ignore next */
           await this.connector.addKardsLogin(steamUser.username)
+          /* istanbul ignore next */
           if (_.isObject(result)) {
             this.session = result as SessionType
             this.startHeartbeat()
             this.authenticating = false
+            // return deferred.resolve(this.session)
             return this.session
           }
+          /* istanbul ignore next */
+          // return deferred.reject(new Error('Result isnt object'))
           throw new Error('Result isnt object')
         } finally {
           this.authenticating = false
         }
+        // catch (e) {
+        // return deferred.reject(e)
+        // }
       }
+      // })
     } else {
       logger.silly('already have session')
-      if (this.session === undefined) { throw new Error('Session invalidated before it was returned') }
       return this.session
     }
+    // return await (deferred.promise as any as Promise<SessionType>)
   }
 
-  async getInternalUser (fallback = 'oldest'): Promise<InternalSteamUser | undefined> {
+  async getInternalUser (fallback = 'oldest'): Promise<InternalSteamUser> {
     if (this.steamUser === undefined) {
-      this.authenticating = true
       var steamUser = await this.getUser(fallback)
       if (steamUser === null) {
-        this.authenticating = false
         throw new Error('No more steam accounts to use')
       }
       if (steamUser.ticket === undefined || steamUser.steam_id === undefined) {
         logger.silly('steam values empty')
-        try {
-          await this.refreshSteam(steamUser.username)
-        } finally {
-          this.authenticating = false
-        }
+        await this.refreshSteam(steamUser.username)
       } else {
+        /* istanbul ignore next */
         this.steamUser = {
           username: steamUser.username,
           steam_id: steamUser.steam_id,
           ticket: steamUser.ticket
         }
       }
-      this.authenticating = false
+      if (this.steamUser === undefined) {
+        /* istanbul ignore next */
+        throw new Error('Session steam user has been corrupted before return')
+      }
       return this.steamUser
     } else {
       return this.steamUser
     }
   }
 
-  async getUser (username = 'oldest'): Promise<SteamUserType | null> {
+  async getUser (username: string = 'oldest'): Promise<SteamUserType | null> {
     if (username === 'oldest') {
       return await this.connector.getOldest(this.type)
     } else {
@@ -245,19 +309,23 @@ export default class KardsSession {
     }
   }
 
+  /* istanbul ignore start */
   async waitForAuthentication (timeout: number = 30): Promise<void> {
     if (!this.authenticating) {
+      /* istanbul ignore next */
       return
     }
     var tries: number = 0
     while (this.authenticating) {
       if (tries >= timeout) {
+        /* istanbul ignore next */
         return
       }
       await new Promise(resolve => setTimeout(resolve, 1000))
       tries += 1
     }
   }
+  /* istanbul ignore end */
 
   needsNewSession (): boolean {
     logger.silly('needsNewSession')
@@ -265,7 +333,8 @@ export default class KardsSession {
       logger.silly('no session')
       return true
     } else {
-      if (Object.hasOwnProperty.call(this.session, 'last_heartbeat')) {
+      if (Object.hasOwnProperty.call(this.session, 'last_heartbeat') &&
+        this.session.last_heartbeat !== undefined) {
         logger.silly('has last_heartbeat')
         var lastHeartbeat = new Date(Date.parse(this.session.last_heartbeat))
         if (lastHeartbeat.getTime() + (1000 * 60) > Date.now()) {
@@ -282,71 +351,137 @@ export default class KardsSession {
     }
   }
 
-  async refreshSteam (username: string): Promise<string> {
+  isLoggedIn (): boolean {
+    if (this.steamUserObject !== undefined) {
+      if (this.steamUserObject.accountInfo !== undefined &&
+        this.steamUserObject.accountInfo !== null) {
+        return true
+      }
+    }
+    return false
+  }
+
+  async refreshSteam (username: string, force: boolean = false, waitTime: number = tenMinutes): Promise<string> {
     logger.silly(`refreshSteam(${username})`)
+    var steamUser = await this.connector.getUser(username)
+    if (steamUser == null) {
+      throw new Error('No steam user found')
+    }
+    const timeSinceLogin = (new Date()).getTime() - steamUser.last_steam_login.getTime()
+    if (timeSinceLogin <= waitTime) {
+      // Login less than 10 minutes ago, dont refresh to avoid limit bans
+      /* istanbul ignore next */
+      return ''
+    }
+    var internalUser: InternalSteamUser = await this.login(steamUser, force)
+    var ticket = await this.getSteamTicket()
+    await this.connector.addSteamLogin(internalUser.username, internalUser.steam_id, ticket)
+    this.steamUser = {
+      username: internalUser.username,
+      steam_id: internalUser.steam_id,
+      ticket
+    }
+    return ticket
+  }
+
+  async getSteamTicket (): Promise<string> {
+    logger.silly('getSteamTicket()')
     const deferred = Q.defer()
-    this.steamUser = undefined
-
-    this.connector.getUser(username).then((steamUser: SteamUserType | null) => {
-      if (steamUser == null) {
-        return deferred.reject(new Error('No steam user found'))
+    if (!this.isLoggedIn() || this.steamUser === undefined) {
+      throw new Error('Need to be logged in first')
+    }
+    this.steamUserObject.gamesPlayed({
+      game_id: 544810,
+      game_extra_info: 'Kards Virtual'
+    })
+    this.steamUserObject.getAuthSessionTicket(this.kardsAppId, (err: any, ticket: any) => {
+      logger.silly('getAuthSessionTicket')
+      if (err !== undefined && err !== null) { return deferred.reject(err) }
+      if (this.steamUser !== undefined) {
+        this.steamUser.ticket = ticket.toString('hex')
       }
-      const timeSinceLogin = (new Date()).getTime() - steamUser.last_steam_login.getTime()
-      if (timeSinceLogin <= tenMinutes) {
-        // Login less than 10 minutes ago, dont refresh to avoid limit bans
-        return deferred.resolve('')
-      }
-      var steam = new SteamUser()
+      return deferred.resolve(ticket.toString('hex'))
+    })
 
-      steam.on('steamGuard', () => {
-        logger.error(`Steam guard left on for user ${steamUser.username}`)
-        return deferred.reject(`Steam guard left on for user ${steamUser.username}`)
-      })
-
-      logger.silly(steamUser.username)
-      logger.silly(steamUser.password)
-      steam.logOn({
-        accountName: steamUser.username,
-        password: steamUser.password,
-        logonID: randU32Sync()
-      })
-
-      steam.on('loggedOn', (details: any) => {
-        logger.silly('loggedOn')
-        // logger.debug(details);
-        // steamId = details.client_supplied_steamid;
-        /*
-                steam.gamesPlayed({
-                    game_id: 544810,
-                    game_extra_info: 'Kards Virtual'
-                });
-                */
-        steam.getAuthSessionTicket(process.env.kards_app_id, (err: any, ticket: any) => {
-          logger.silly('getAuthSessionTicket')
-          if (err !== undefined && err !== null) { return deferred.reject(err) }
-          this.connector.addSteamLogin(
-            steamUser.username,
-            details.client_supplied_steamid,
-            ticket.toString('hex'))
-            .then(() => {
-              this.steamUser = {
-                username: steamUser.username,
-                steam_id: details.client_supplied_steamid,
-                ticket: ticket.toString('hex')
-              }
-              return deferred.resolve(ticket.toString('hex'))
-            }).catch((e) => {
-              return deferred.reject(e)
-            })
-        })
-      })
-
-      steam.on('error', function (error: any) {
-        return deferred.reject(error)
-      })
-    }).catch((e) => {
-      return deferred.reject(e)
+    this.steamUserObject.on('error', function (error: any) {
+      /* istanbul ignore next */
+      return deferred.reject(error)
     })
     return deferred.promise as any as Promise<string>
+  }
+
+  async login (steamUser: SteamUserType, relog: boolean = false): Promise<InternalSteamUser> {
+    logger.silly(`login(${JSON.stringify(steamUser)}, ${relog ? 'true' : 'false'})`)
+    const deferred = Q.defer()
+    if (this.isLoggedIn()) {
+      /* istanbul ignore if */
+      if (steamUser.username === this.steamUserObject.accountInfo.name) {
+        if (relog) {
+          await this.logout()
+          this.login(steamUser, relog).then((user) => {
+            return deferred.resolve(user)
+          }).catch((e) => {
+            /* istanbul ignore next */
+            return deferred.reject(e)
+          })
+        } else {
+          return this.steamUser ?? {
+            username: this.steamUserObject.accountInfo.name,
+            steam_id: this.steamUserObject.steamID
+          }
+        }
+      } else {
+        await this.logout()
+        this.login(steamUser, relog).then((user) => {
+          return deferred.resolve(user)
+        }).catch((e) => {
+          /* istanbul ignore next */
+          return deferred.reject(e)
+        })
+      }
+    } else {
+      this.steamUserObject.on('steamGuard', () => {
+        /* istanbul ignore next */
+        logger.warn(`Steam guard left on for user ${steamUser.username}`)
+        /* istanbul ignore next */
+        return deferred.reject(`Steam guard left on for user ${steamUser.username}`)
+      })
+      this.steamUserObject.logOn({
+        accountName: steamUser.username,
+        password: steamUser.password,
+        rememberPassword: true,
+        logonID: randU32Sync()
+      })
+      this.steamUserObject.on('loggedOn', (details: any) => {
+        logger.silly('loggedOn')
+        this.steamUser = {
+          username: steamUser.username,
+          steam_id: details.client_supplied_steamid
+        }
+        return deferred.resolve(this.steamUser)
+      })
+
+      this.steamUserObject.on('error', function (error: any) {
+        /* istanbul ignore next */
+        return deferred.reject(error)
+      })
+    }
+    return deferred.promise as any as Promise<InternalSteamUser>
+  }
+
+  async logout (): Promise<void> {
+    logger.silly('logout()')
+    const deferred = Q.defer()
+    if (!this.isLoggedIn()) {
+      return
+    }
+    this.steamUserObject.on('disconnected', () => {
+      this.steamUserObject.on('disconnected', () => {})
+      return deferred.resolve()
+    })
+    this.steamUserObject.logOff()
+    this.steamUserObject.accountInfo = undefined
+    this.steamUser = undefined
+    return deferred.promise as any as Promise<void>
   }
 }
