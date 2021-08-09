@@ -19,6 +19,7 @@ export async function closeDatabase (): Promise<boolean> {
     await mongoose.connection.dropDatabase()
     await mongoose.connection.close()
   }
+  await mongoose.disconnect()
   return await mongod.stop()
 }
 
