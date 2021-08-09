@@ -8,7 +8,7 @@ module.exports = {
   clearMocks: true,
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  coverageProvider: 'v8',
+  coverageProvider: 'babel',
   collectCoverageFrom: [
     '**/*.ts',
     '!**/types.ts',
