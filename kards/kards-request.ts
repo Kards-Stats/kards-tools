@@ -10,7 +10,7 @@ import { OutgoingHttpHeaders } from 'http'
 
 const logger: winston.Logger = getCurrentLogger('includes-kards-request')
 
-export async function authenticatedRequest (method: string, path: string, session: Session): Promise<Keyable | string> {
+export async function authenticatedRequest (method: string, path: string, session: Session, driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<Keyable | string> {
   logger.silly('authenticatedGet')
   const deferred = Q.defer()
   session.getJti().then((jti) => {
@@ -19,7 +19,7 @@ export async function authenticatedRequest (method: string, path: string, sessio
     logger.debug(path)
     kardsRequest(method, {
       Authorization: 'jti ' + jti,
-      'Drift-Api-Key': process.env.kards_drift_api_key
+      'Drift-Api-Key': driftApiKey
     }, path).then((result) => {
       logger.silly('gotResult')
       return deferred.resolve(result)
@@ -33,7 +33,7 @@ export async function authenticatedRequest (method: string, path: string, sessio
   return deferred.promise as any as Promise<Keyable | string>
 }
 
-export async function authenticatedPost (path: string, data: string, session: Session): Promise<Keyable | string> {
+export async function authenticatedPost (path: string, data: string, session: Session, driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<Keyable | string> {
   logger.silly('authenticatedGet')
   const deferred = Q.defer()
   session.getJti().then((jti) => {
@@ -44,7 +44,7 @@ export async function authenticatedPost (path: string, data: string, session: Se
       'Content-Type': 'application/json',
       Authorization: 'jti ' + jti,
       'Content-Length': data.length,
-      'Drift-Api-Key': process.env.kards_drift_api_key
+      'Drift-Api-Key': driftApiKey
     }, path, data).then((result) => {
       return deferred.resolve(result)
     }).catch((e) => {
@@ -56,9 +56,9 @@ export async function authenticatedPost (path: string, data: string, session: Se
   return deferred.promise as any as Promise<Keyable | string>
 }
 
-export async function publicGet (path: string): Promise<Keyable | string> {
+export async function publicGet (path: string, driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<Keyable | string> {
   const deferred = Q.defer()
-  kardsRequest('GET', { 'Drift-Api-Key': process.env.kards_drift_api_key }, path).then((result) => {
+  kardsRequest('GET', { 'Drift-Api-Key': driftApiKey }, path).then((result) => {
     return deferred.resolve(result)
   }).catch((e) => {
     return deferred.reject(e)
@@ -66,12 +66,12 @@ export async function publicGet (path: string): Promise<Keyable | string> {
   return deferred.promise as any as Promise<Keyable | string>
 }
 
-export async function publicPost (path: string, data: string): Promise<Keyable | string> {
+export async function publicPost (path: string, data: string, driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<Keyable | string> {
   const deferred = Q.defer()
   kardsDataRequest('POST', {
     'Content-Type': 'application/json',
     'Content-Length': data.length,
-    'Drift-Api-Key': process.env.kards_drift_api_key
+    'Drift-Api-Key': driftApiKey
   }, path, data).then((result) => {
     return deferred.resolve(result)
   }).catch((e) => {
@@ -90,7 +90,7 @@ export async function kardsRequest (method: string, headers: OutgoingHttpHeaders
   logger.silly('kardsRequest')
   const deferred = Q.defer()
   var options: origHttps.RequestOptions = {
-    host: process.env.kards_hostname,
+    host: process.env.kards_hostname ?? 'kards.live.1939api.com',
     path: path,
     port: 443,
     method: method,
@@ -120,6 +120,7 @@ export async function kardsRequest (method: string, headers: OutgoingHttpHeaders
       }
     })
   }).on('error', (e) => {
+    logger.error('HTTP req error')
     return deferred.reject(e)
   }).end()
   return deferred.promise as any as Promise<Keyable | string>
@@ -129,7 +130,7 @@ async function kardsDataRequest (method: string, headers: OutgoingHttpHeaders, p
   logger.silly('kardsRequest')
   const deferred = Q.defer()
   var options: origHttps.RequestOptions = {
-    host: process.env.kards_hostname,
+    host: process.env.kards_hostname ?? 'kards.live.1939api.com',
     path: path,
     port: 443,
     method: method,
