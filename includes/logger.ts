@@ -24,7 +24,7 @@ export function formatObject (param: any): string {
   return param.toString()
 }
 
-/* c8 ignore start */
+/* istanbul ignore start */
 const all = logger.format((info: any) => {
   const splat: any[] = info[SPLAT_STRING] ?? []
   const message = formatObject(info.message)
@@ -32,7 +32,7 @@ const all = logger.format((info: any) => {
   info.message = `${message} ${rest}`.trim()
   return info
 })
-/* c8 ignore stop */
+/* istanbul ignore stop */
 
 interface CustomTransformableInfo extends logger.Logform.TransformableInfo {
   timestamp: string
@@ -89,9 +89,8 @@ export function getConfig (label: string): logger.LoggerOptions {
           logger.format.label({ label: label }),
           logger.format.errors({ stack: true }),
           logger.format.printf((msg) => {
-            /* c8 ignore next */
+            /* istanbul ignore next 2 */
             const msgTyped: CustomTransformableInfo = msg as CustomTransformableInfo
-            /* c8 ignore next */
             return `[${msgTyped.timestamp}][${msgTyped.label}][${msgTyped.level}]: ${msgTyped.message}`
           })
         )
@@ -107,9 +106,8 @@ export function getConfig (label: string): logger.LoggerOptions {
           logger.format.label({ label: label }),
           logger.format.errors({ stack: true }),
           logger.format.printf((msg) => {
-            /* c8 ignore next */
+            /* istanbul ignore next 2 */
             const msgTyped: CustomTransformableInfo = msg as CustomTransformableInfo
-            /* c8 ignore next */
             return `[${msgTyped.timestamp}][${msgTyped.label}][${msgTyped.level}]: ${msgTyped.message}`
           })
         )
