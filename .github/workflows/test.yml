@@ -40,9 +40,7 @@ jobs:
         name: "users.json"
         json: ${{ secrets.TEST_STEAM_ACCOUNTS }}
         dir: 'tests/kards/'
-    - run: 'cat tests/kards/users.json'
-    # - run: npm run build --if-present
-    # - run: npm test
+    - run: npm test
     - uses: codecov/codecov-action@v2
       with:
         files: ./coverage/coverage-final.json
