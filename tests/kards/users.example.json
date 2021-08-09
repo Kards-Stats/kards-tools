@@ -1,0 +1,24 @@
+{
+    "accounts": [
+        {
+            "username": "test_user1",
+            "password": ""
+        },
+        {
+            "username": "test_user2",
+            "password": ""
+        },
+        {
+            "username": "test_user3",
+            "password": ""
+        }
+    ],
+    "steamGuardAccount": {
+        "username": "test_steam_guard_user1",
+        "password": ""
+    },
+    "bannedAccount": {
+        "username": "test_banned_user1",
+        "password": ""
+    }
+}
