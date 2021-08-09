@@ -30,7 +30,7 @@ interface Session {
   jwt: string
   last_daily_mission_cancel: null
   last_daily_mission_renewal: string
-  last_heartbeat: string
+  last_heartbeat?: string
   last_logon_date: string
   launch_messages: string[]
   library_url: string
