@@ -115,7 +115,7 @@ describe('addSteamUser', () => {
     expect(connector.addSteamUser('', 'password', 'type')).rejects.toBeDefined()
     expect(connector.addSteamUser('username', '', 'type')).rejects.toBeDefined()
   })
-  it('Should ignore on user already there', async () => {
+  it('Should ignore on user already there default', async () => {
     await (new connector.SteamUserModel(steamNow1)).save()
     await connector.addSteamUser(steamNow1.username, steamNow1.password, steamNow1.type)
     const user = await connector.SteamUserModel.findOne({ username: steamNow1.username })
@@ -130,6 +130,38 @@ describe('addSteamUser', () => {
       expect(user.steam_id).toBe(steamNow1.steam_id)
       expect(user.last_steam_login.toISOString()).toBe(steamNow1.last_steam_login.toISOString())
       expect(user.last_kards_login.toISOString()).toBe(steamNow1.last_kards_login.toISOString())
+    }
+  })
+  it('Should ignore on user already there', async () => {
+    await (new connector.SteamUserModel(steamNow1)).save()
+    await connector.addSteamUser(steamNow1.username, steamNow1.password, steamNow1.type, false)
+    const user = await connector.SteamUserModel.findOne({ username: steamNow1.username })
+    expect(user).not.toBeNull()
+    if (user !== null) {
+      expect(user.username).toBe(steamNow1.username)
+      expect(user.password).toBe(steamNow1.password)
+      expect(user.type).toBe(steamNow1.type)
+      expect(user.ticket).toBeDefined()
+      expect(user.ticket).toBe(steamNow1.ticket)
+      expect(user.steam_id).toBeDefined()
+      expect(user.steam_id).toBe(steamNow1.steam_id)
+      expect(user.last_steam_login.toISOString()).toBe(steamNow1.last_steam_login.toISOString())
+      expect(user.last_kards_login.toISOString()).toBe(steamNow1.last_kards_login.toISOString())
+    }
+  })
+  it('Should overwrite on user already there when set', async () => {
+    await (new connector.SteamUserModel(steamNow1)).save()
+    await connector.addSteamUser(steamNow1.username, steamNow1.password, steamNow1.type, true)
+    const user = await connector.SteamUserModel.findOne({ username: steamNow1.username })
+    expect(user).not.toBeNull()
+    if (user !== null) {
+      expect(user.username).toBe(steamNow1.username)
+      expect(user.password).toBe(steamNow1.password)
+      expect(user.type).toBe(steamNow1.type)
+      expect(user.ticket).toBeUndefined()
+      expect(user.steam_id).toBeUndefined()
+      expect(user.last_steam_login.toISOString()).toBe(date.toISOString())
+      expect(user.last_kards_login.toISOString()).toBe(date.toISOString())
     }
   })
   it('Should add new user', async () => {

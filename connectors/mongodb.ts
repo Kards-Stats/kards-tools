@@ -49,12 +49,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
   }
 
-  async addSteamUser (username: string, password: string, type: string): Promise<SteamUser | null> {
-    const deferred = Q.defer()
+  async addSteamUser (username: string, password: string, type: string, overwrite: boolean = false): Promise<SteamUser | null> {
     if (username === '' ||
       password === '' ||
       type === '') {
-      return await Promise.reject(new Error('Empty arguments for addSteamUser'))
+      throw new Error('Empty arguments for addSteamUser')
     }
     const date = new Date(0)
     const data: SteamUser = {
@@ -65,14 +64,15 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       last_steam_login: date,
       last_kards_login: date
     }
-    const model = new this.SteamUserModel(data)
-    model.save().then((value) => {
-      return deferred.resolve(this.formatSteamUser(value))
-    }).catch((e) => {
-      /* c8 ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var value = await this.SteamUserModel.findOne({ username: username })
+    if (value === null) {
+      value = new this.SteamUserModel(data)
+    } else {
+      if (overwrite) {
+        await value.overwrite(data)
+      }
+    }
+    return await value.save()
   }
 
   formatSteamUser (document: SteamUserDocument | null): SteamUser | null {
@@ -106,7 +106,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel.find(query).then((results: SteamUserDocument[]) => {
       return deferred.resolve(this.formatSteamUsers(results))
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<Array<SteamUser | null>>
@@ -119,7 +119,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
       return deferred.resolve(this.formatSteamUser(result))
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -132,7 +132,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     this.SteamUserModel.findOne(query, null, { sort: { last_steam_login: 1 } }).then((result: SteamUserDocument | null) => {
       return deferred.resolve(this.formatSteamUser(result))
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -152,11 +152,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
-        /* c8 ignore next */
+        /* istanbul ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -176,11 +176,11 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
-        /* c8 ignore next */
+        /* istanbul ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
@@ -198,13 +198,27 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       result.save().then(() => {
         return deferred.resolve(this.formatSteamUser(result))
       }).catch((e) => {
-        /* c8 ignore next */
+        /* istanbul ignore next */
         return deferred.reject(e)
       })
     }).catch((e) => {
-      /* c8 ignore next */
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
   }
+}
+
+export function getMongooseConfig (prefix: string = 'mdb_', ssl: boolean = false): string {
+  var userString = ''
+  if (process.env[`${prefix}username`] !== undefined &&
+    process.env[`${prefix}password`] !== undefined &&
+    process.env[`${prefix}username`] !== '' &&
+    process.env[`${prefix}password`] !== '') {
+    userString = `${process.env[`${prefix}username`] ?? ''}:${process.env[`${prefix}password`] ?? ''}@`
+  }
+  var conPrefix = process.env[`${prefix}prefix`] ?? 'mongodb+srv://'
+  const conString = `${conPrefix}${userString}${process.env[`${prefix}cluster_url`] ?? 'localhost'}/${process.env[`${prefix}database`] ?? 'test'}?retryWrites=true&w=majority&ssl=${ssl ? 'true' : 'false'}`
+  logger.info(conString)
+  return conString
 }
