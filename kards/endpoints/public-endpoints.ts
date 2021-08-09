@@ -16,16 +16,16 @@ const oneDay: number = 24 * 60 * 60 * 60 * 1000
 
 var endpoints: Endpoints | undefined
 
-async function refreshPublicEndpoints (): Promise<Endpoints> {
+async function refreshPublicEndpoints (driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<Endpoints> {
   logger.silly('refreshPublicEndpoints')
   const deferred = Q.defer()
   const options: origHttps.RequestOptions = { // TODO user kards-request lib
-    host: process.env.kards_hostname,
+    host: process.env.kards_hostname ?? 'kards.live.1939api.com',
     path: '/',
     port: 443,
     method: 'GET',
     headers: {
-      'Drift-Api-Key': process.env.kards_drift_api_key
+      'Drift-Api-Key': driftApiKey
     },
     rejectUnauthorized: false
   }
@@ -63,18 +63,18 @@ async function refreshPublicEndpoints (): Promise<Endpoints> {
   return deferred.promise as any as Promise<Endpoints>
 }
 
-export async function getCompatibleVersions (): Promise<string[]> {
+export async function getCompatibleVersions (driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<string[]> {
   logger.silly('getCompatibleVersions')
   const deferred = Q.defer()
   keyv.get('kards_versions').then((versions) => {
     if (versions === undefined || !_.isArray(versions)) {
       const options: origHttps.RequestOptions = { // TODO user kards-request lib
-        host: process.env.kards_hostname,
+        host: process.env.kards_hostname ?? 'kards.live.1939api.com',
         path: '/config',
         port: 443,
         method: 'GET',
         headers: {
-          'Drift-Api-Key': process.env.kards_drift_api_key
+          'Drift-Api-Key': driftApiKey
         },
         rejectUnauthorized: false
       }
@@ -118,7 +118,7 @@ export async function getCompatibleVersions (): Promise<string[]> {
   return deferred.promise as any as Promise<string[]>
 }
 
-export async function getKardsSessionEndpoint (): Promise<string> {
+export async function getKardsSessionEndpoint (driftApiKey: string = '1939-kards-5dcba429f:Kards 1.1.4835'): Promise<string> {
   logger.silly('getKardsSessionEndpoint')
   const deferred = Q.defer()
   if (endpoints !== undefined && Object.hasOwnProperty.call(endpoints, 'session') && endpoints.session != null && endpoints.session !== '') {
@@ -129,7 +129,7 @@ export async function getKardsSessionEndpoint (): Promise<string> {
       return reject(new Error('Session invalidated after check'))
     })
   } else {
-    refreshPublicEndpoints().then((endpoints: Endpoints) => {
+    refreshPublicEndpoints(driftApiKey).then((endpoints: Endpoints) => {
       if (Object.hasOwnProperty.call(endpoints, 'session') && endpoints.session != null && endpoints.session !== '') {
         return deferred.resolve(endpoints.session)
       } else {
