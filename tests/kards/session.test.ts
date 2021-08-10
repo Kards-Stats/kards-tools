@@ -176,7 +176,7 @@ describe('login', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -313,7 +313,7 @@ describe('refreshSteam', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -361,7 +361,7 @@ describe('needsNewSession', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -407,7 +407,7 @@ describe('getSteamTicket', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -450,7 +450,7 @@ describe('getUser', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -491,7 +491,7 @@ describe('getInternalUser', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -576,7 +576,7 @@ describe('getSession', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -644,7 +644,7 @@ describe('getPlayerID', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -700,7 +700,7 @@ describe('getJti', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
@@ -756,7 +756,7 @@ describe('stopSession', () => {
     await session.logout()
     await session.stopSession()
     await db.clearDatabase()
-  })
+  }, 20000)
   afterAll(async () => {
     await db.closeDatabase()
   })
