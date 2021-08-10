@@ -54,6 +54,20 @@ export default class KardsSession {
     this.kardsAppId = kardsAppId
     this.driftApiKey = driftApiKey
     this.steamUserObject = new SteamUser()
+    this.steamUserObject.storage.on('save', (filename: string, contents: Buffer, callback: (err: any | null) => void) => {
+      connector.saveFile(filename, contents).then(() => {
+        callback(null)
+      }).catch((e) => {
+        callback(e)
+      })
+    })
+    this.steamUserObject.storage.on('read', (filename: string, callback: (err: any, buffer: Buffer | null) => void) => {
+      connector.readFile(filename).then((contents) => {
+        callback(null, contents)
+      }).catch((e) => {
+        callback(e, null)
+      })
+    })
   }
 
   /* istanbul ignore next */

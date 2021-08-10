@@ -8,4 +8,6 @@ export interface SteamAccountConnector {
   addSteamLogin: (username: string, steamId: string, ticket: string) => Promise<SteamUser | null>
   addKardsLogin: (username: string) => Promise<SteamUser | null>
   setBanned: (username: string, banned: boolean) => Promise<SteamUser | null>
+  saveFile: (filename: string, contents: Buffer) => Promise<void>
+  readFile: (filename: string) => Promise<Buffer | null>
 }

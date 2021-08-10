@@ -4,6 +4,8 @@ import mongoose from 'mongoose'
 import winston from 'winston'
 import { SteamAccountConnector } from './types'
 import { SteamUser } from '../types/backend'
+import stream from 'stream'
+import mongodb from 'mongodb'
 
 const logger: winston.Logger = getCurrentLogger('models-steam-user')
 
@@ -28,6 +30,11 @@ const SteamUserSchema = new Schema({
   last_kards_login: Date
 }, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 
+const SteamUserFileSchema = new Schema({
+  filename: RequiredString,
+  id: RequiredString
+}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
+
 interface SteamUserDocument extends mongoose.Document {
   username: string
   password: string
@@ -38,15 +45,25 @@ interface SteamUserDocument extends mongoose.Document {
   last_steam_login: Date
   last_kards_login: Date
 }
+interface SteamUserFilesDocument extends mongoose.Document {
+  filename: string
+  id: string
+}
 
 export default class MongoDBSteamUserConnector implements SteamAccountConnector {
   SteamUserModel: mongoose.Model<SteamUserDocument>
+  SteamUserFilesModel: mongoose.Model<SteamUserFilesDocument>
+  bucket: mongodb.GridFSBucket
 
   constructor (collectionName: string, connection: mongoose.Connection) {
     if (connection === null || connection.readyState !== 1) {
       throw new Error('Connection doesnt exist or isnt ready')
     }
     this.SteamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
+    this.SteamUserFilesModel = connection.model(`${collectionName}_files`, SteamUserFileSchema) as any as mongoose.Model<SteamUserFilesDocument>
+    this.bucket = new mongodb.GridFSBucket(connection.db, {
+      bucketName: 'photos'
+    })
   }
 
   async addSteamUser (username: string, password: string, type: string, overwrite: boolean = false): Promise<SteamUser | null> {
@@ -206,6 +223,86 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<SteamUser | null>
+  }
+
+  async saveFile (filename: string, contents: Buffer): Promise<void> {
+    const deferred = Q.defer()
+    // Covert buffer to Readable Stream
+    const readablePhotoStream = new stream.Readable()
+    readablePhotoStream.push(contents)
+    readablePhotoStream.push(null)
+    const uploadStream = this.bucket.openUploadStream(filename)
+    const id = uploadStream.id.toLocaleString()
+    readablePhotoStream.pipe(uploadStream)
+    uploadStream.on('error', () => {
+      return deferred.reject(new Error('Error updating steam account file'))
+    })
+    uploadStream.on('finish', () => {
+      this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
+        if (file === null) {
+          file = new this.SteamUserFilesModel({
+            filename: filename,
+            id: id
+          })
+        } else {
+          file.overwrite({
+            filename: filename,
+            id: id
+          })
+        }
+        file.save().then(() => {
+          return deferred.resolve()
+        }).catch((e) => {
+          return deferred.reject(e)
+        })
+      }).catch((e) => {
+        return deferred.reject(e)
+      })
+    })
+    /*
+    var writestream = this.gridFS.createWriteStream({
+      filename: filename
+    })
+    writestream.on('close', () => {
+      return deferred.resolve()
+    })
+    writestream.on('error', (error) => {
+      return deferred.reject(error)
+    })
+    var bufferStream = new stream.PassThrough()
+    bufferStream.end(contents)
+    bufferStream.pipe(writestream)
+    */
+    return deferred.promise as any as Promise<void>
+  }
+
+  async readFile (filename: string): Promise<Buffer | null> {
+    const deferred = Q.defer()
+    this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
+      if (file === null) {
+        deferred.resolve(null)
+      } else {
+        try {
+          var id = new mongodb.ObjectID(file.id)
+        } catch (e) {
+          return deferred.reject(e)
+        }
+        const downloadStream = this.bucket.openDownloadStream(id)
+        var fileData: Uint8Array[] = []
+        downloadStream.on('data', (chunk) => {
+          fileData.push(chunk)
+        })
+        downloadStream.on('error', () => {
+          return deferred.reject(new Error('Error getting steam account file'))
+        })
+        downloadStream.on('end', () => {
+          return deferred.resolve(Buffer.concat(fileData))
+        })
+      }
+    }).catch((e) => {
+      return deferred.reject(e)
+    })
+    return deferred.promise as any as Promise<Buffer | null>
   }
 }
 
