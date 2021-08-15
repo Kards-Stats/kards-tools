@@ -3,7 +3,8 @@ module.exports = {
   testEnvironment: 'node',
   testPathIgnorePatterns: [
     '/node_modules/',
-    '.*\\.js'
+    '.*\\.js',
+    '.*\\.ignore\\.ts'
   ],
   clearMocks: true,
   collectCoverage: true,
