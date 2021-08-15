@@ -304,10 +304,10 @@ export default class Session {
       if (this.steamUser === undefined) {
         /* istanbul ignore next */
         throw new Error('Session steam user has been corrupted before return')
-      } else if (this.steamUser.ticket === undefined) {
-        /* istanbul ignore next */
-        throw new Error('Session steam user has not been able to get ticket before return')
-      }
+      } // else if (this.steamUser.ticket === undefined) {
+      /* istanbul ignore next */
+      // throw new Error('Session steam user has not been able to get ticket before return')
+      // }
       return this.steamUser
     } else {
       return this.steamUser
