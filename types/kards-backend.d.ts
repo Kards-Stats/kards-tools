@@ -1,3 +1,5 @@
+type MatchStatus = 'running' | 'finished' | 'orphaned' | 'not_found'
+
 interface LoginReward {
   day: number
   reset: string
@@ -294,6 +296,19 @@ interface ZAction {
   [key: string]: any
 }
 
+interface FriendListItem {
+  busy_status: string | null
+  is_online: boolean
+  player_id: number
+  player_name: string
+  player_tag: number
+  status: string
+}
+
+interface FriendId {
+  friend_id: number
+}
+
 export {
   Config,
   Home,
@@ -307,5 +322,8 @@ export {
   XAction,
   ZAction,
   MatchInfo,
-  ActionData
+  ActionData,
+  MatchStatus,
+  FriendListItem,
+  FriendId
 }
