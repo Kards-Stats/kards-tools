@@ -2,8 +2,9 @@ import { MongoDBSteamUserConnector } from '../../connectors'
 import * as db from '../helpers/db'
 import { SteamUser } from '../../types/backend'
 import users from './users.json'
-import { KardsSession } from '../../kards'
-import { Session } from '../../types/kards-backend'
+import { Session } from '../../kards'
+import { Session as SessionType } from '../../types/kards-backend'
+import { wait } from '../helpers/utils'
 
 const date = new Date(0)
 const now = new Date()
@@ -22,52 +23,52 @@ interface Users {
 const usersTyped: Users = users as Users
 const accountType: string = 'test-type'
 const invalidType: string = 'invalid-type'
-const emptySession: Session = {
-  achievements_url: "",
+const emptySession: SessionType = {
+  achievements_url: '',
   britain_level: 0,
   britain_xp: 0,
   client_id: 0,
-  client_url: "",
-  dailymissions_url: "",
-  decks_url: "",
+  client_url: '',
+  dailymissions_url: '',
+  decks_url: '',
   draft_admissions: 0,
   dust: 0,
-  email: "",
+  email: '',
   email_reward_received: false,
   email_verified: false,
   germany_level: 0,
   germany_xp: 0,
   gold: 0,
   has_been_officer: false,
-  heartbeat_url: "",
+  heartbeat_url: '',
   is_officer: false,
   is_online: false,
   japan_level: 0,
   japan_xp: 0,
-  jti: "ttgsf",
-  jwt: "",
+  jti: 'ttgsf',
+  jwt: '',
   last_daily_mission_cancel: null,
-  last_daily_mission_renewal: "",
-  last_logon_date: "",
+  last_daily_mission_renewal: '',
+  last_logon_date: '',
   launch_messages: [],
-  library_url: "",
+  library_url: '',
   new_cards: [],
   new_player_login_reward: {
     day: 0,
-    reset: "",
+    reset: '',
     seconds: 0
   },
   npc: false,
   online_flag: false,
-  packs_url: "",
+  packs_url: '',
   player_id: 4353645,
-  player_name: "",
+  player_name: '',
   player_tag: 0,
-  player_url: "",
+  player_url: '',
   rewards: [],
-  season_end: "",
+  season_end: '',
   season_wins: 0,
-  server_time: "",
+  server_time: '',
   soviet_level: 0,
   soviet_xp: 0,
   stars: 0,
@@ -76,7 +77,7 @@ const emptySession: Session = {
   usa_level: 0,
   usa_xp: 0,
   user_id: 0,
-  user_url: ""
+  user_url: ''
 }
 
 describe('Users JSON', () => {
@@ -94,9 +95,9 @@ describe('Users JSON', () => {
     for (var account of usersTyped.accounts) {
       expect(account).toBeTruthy()
       expect(typeof account).toBe('object')
-      expect(typeof account.username).toBe('string');
+      expect(typeof account.username).toBe('string')
       expect(account.username.trim()).toBeTruthy()
-      expect(typeof account.password).toBe('string');
+      expect(typeof account.password).toBe('string')
       expect(account.password.trim()).toBeTruthy()
     }
   })
@@ -117,7 +118,7 @@ describe('Constructor', () => {
     await db.closeDatabase()
   })
   it('Should create default', async () => {
-    var session = new KardsSession(accountType, connector)
+    var session = new Session(accountType, connector)
     expect(session).toBeTruthy()
     expect(session.kardsAppId).toBeTruthy()
     expect(session.type).toBeTruthy()
@@ -126,21 +127,24 @@ describe('Constructor', () => {
   })
   it('Should throw for blank drift api key', async () => {
     expect(() => {
-      new KardsSession(accountType, connector, '')
+      var session = new Session(accountType, connector, undefined, '')
+      expect(session).toThrow()
     }).toThrow()
   })
   it('Should throw for blank app id', async () => {
     expect(() => {
-      new KardsSession(accountType, connector, '1939-kards-5dcba429f', '')
+      var session = new Session(accountType, connector, undefined, '1939-kards-5dcba429f', '')
+      expect(session).toThrow()
     }).toThrow()
   })
   it('Should throw for blank both', async () => {
     expect(() => {
-      new KardsSession(accountType, connector, '', '')
+      var session = new Session(accountType, connector, undefined, '', '')
+      expect(session).toThrow()
     }).toThrow()
   })
   it('Should create default app id', async () => {
-    var session = new KardsSession(accountType, connector, '1939-kards-5dcba429f')
+    var session = new Session(accountType, connector, undefined, '1939-kards-5dcba429f')
     expect(session).toBeTruthy()
     expect(session.kardsAppId).toBeTruthy()
     expect(session.type).toBeTruthy()
@@ -148,7 +152,7 @@ describe('Constructor', () => {
     expect(session.driftApiKey).toBe('1939-kards-5dcba429f')
   })
   it('Should create custom app id and drift api key', async () => {
-    var session = new KardsSession(accountType, connector, '1939-kards-5dcba429f', '1')
+    var session = new Session(accountType, connector, undefined, '1939-kards-5dcba429f', '1')
     expect(session).toBeTruthy()
     expect(session.kardsAppId).toBe('1')
     expect(session.type).toBeTruthy()
@@ -159,7 +163,7 @@ describe('Constructor', () => {
 
 describe('login', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -170,7 +174,7 @@ describe('login', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -187,7 +191,7 @@ describe('login', () => {
     }
     var internalUser = await session.login(user, false)
     expect(internalUser).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 10000)
   it('Should overwrite for new user', async () => {
     var user = await connector.getUser(usersTyped.accounts[0].username)
@@ -203,7 +207,7 @@ describe('login', () => {
     }
     expect(session.steamUser?.ticket).toBe('ticket')
     expect(session.steamUser?.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
     user = await connector.getUser(usersTyped.accounts[1].username)
     if (user === null) {
       throw new Error('User cannot be null in test')
@@ -213,7 +217,7 @@ describe('login', () => {
     expect(session.steamUser).toBeDefined()
     expect(session.steamUser?.ticket).toBeUndefined()
     expect(session.steamUser?.username).toBe(usersTyped.accounts[1].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return info for same account', async () => {
     var user = await connector.getUser(usersTyped.accounts[0].username)
@@ -229,7 +233,7 @@ describe('login', () => {
     }
     expect(session.steamUser?.ticket).toBe('ticket')
     expect(session.steamUser?.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
     user = await connector.getUser(usersTyped.accounts[0].username)
     if (user === null) {
       throw new Error('User cannot be null in test')
@@ -237,7 +241,7 @@ describe('login', () => {
     internalUser = await session.login(user, false)
     expect(internalUser).toBeTruthy()
     expect(internalUser).toBe(session.steamUser)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return default info for same account', async () => {
     var user = await connector.getUser(usersTyped.accounts[0].username)
@@ -249,7 +253,7 @@ describe('login', () => {
     expect(session.steamUser).toBeDefined()
     expect(session.steamUser?.ticket).toBeUndefined()
     expect(session.steamUser?.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
     session.steamUser = undefined
     user = await connector.getUser(usersTyped.accounts[0].username)
     if (user === null) {
@@ -259,7 +263,7 @@ describe('login', () => {
     expect(internalUser).toBeTruthy()
     expect(internalUser.ticket).toBeUndefined()
     expect(internalUser.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return relog info for same account', async () => {
     var user = await connector.getUser(usersTyped.accounts[0].username)
@@ -271,7 +275,7 @@ describe('login', () => {
     expect(session.steamUser).toBeDefined()
     expect(session.steamUser?.ticket).toBeUndefined()
     expect(session.steamUser?.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
     user = await connector.getUser(usersTyped.accounts[0].username)
     if (user === null) {
       throw new Error('User cannot be null in test')
@@ -281,22 +285,22 @@ describe('login', () => {
     expect(internalUser).toBe(session.steamUser)
     expect(internalUser.ticket).toBeUndefined()
     expect(internalUser.username).toBe(usersTyped.accounts[0].username)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should Throw for steam guard', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     var user = await connector.getUser(usersTyped.steamGuardAccount.username)
     if (user === null) {
       throw new Error('User cannot be null in test')
     }
     await expect(session.login(user, false)).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
 })
 
 describe('refreshSteam', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -307,7 +311,7 @@ describe('refreshSteam', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -318,33 +322,33 @@ describe('refreshSteam', () => {
     await db.closeDatabase()
   })
   it('Should reject for invalid or empty', async () => {
-    expect.assertions(2);
+    expect.assertions(2)
     await expect(session.refreshSteam('')).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
     await expect(session.refreshSteam('invalid_user')).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should not re login for 5 seconds', async () => {
     var ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
     expect(ticket).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    var ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
+    await wait(1)
+    ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
     expect(ticket).toBe('')
     await new Promise(resolve => setTimeout(resolve, 5000))
-    var ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
+    ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
     expect(ticket).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for steam guard', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     await expect(session.refreshSteam(usersTyped.steamGuardAccount.username)).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
 })
 
 describe('needsNewSession', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -355,7 +359,7 @@ describe('needsNewSession', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -390,7 +394,7 @@ describe('needsNewSession', () => {
 
 describe('getSteamTicket', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -401,7 +405,7 @@ describe('getSteamTicket', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -412,13 +416,13 @@ describe('getSteamTicket', () => {
     await db.closeDatabase()
   })
   it('Should reject for undefined steamUserObject', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     session.steamUserObject = undefined
     await expect(session.getSteamTicket()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should reject for undefined steamUser', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     var tempObj = session.steamUserObject
     session.steamUserObject = {
       accountInfo: 'placeholder'
@@ -427,13 +431,13 @@ describe('getSteamTicket', () => {
     await expect(session.getSteamTicket()).rejects.toBeTruthy()
     // Restore for afterAll logout
     session.steamUserObject = tempObj
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
 })
 
 describe('getUser', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -444,7 +448,7 @@ describe('getUser', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -474,7 +478,7 @@ describe('getUser', () => {
 
 describe('getInternalUser', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -485,7 +489,7 @@ describe('getInternalUser', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -509,7 +513,7 @@ describe('getInternalUser', () => {
       expect(user.steam_id).toBe('steamid')
       expect(user.ticket).toBe('steamticket')
     }
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should return InternalUser for default', async () => {
     session.steamUser = undefined
@@ -521,7 +525,7 @@ describe('getInternalUser', () => {
       expect(user.steam_id).toBeTruthy()
       expect(user.ticket).toBeTruthy()
     }
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should return InternalUser for user', async () => {
     session.steamUser = undefined
@@ -533,7 +537,7 @@ describe('getInternalUser', () => {
       expect(user.steam_id).toBeTruthy()
       expect(user.ticket).toBeTruthy()
     }
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should return InternalUser for user without re auth', async () => {
     session.steamUser = undefined
@@ -546,20 +550,20 @@ describe('getInternalUser', () => {
       expect(user.steam_id).toBeTruthy()
       expect(user.ticket).toBe(ticket)
     }
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should reject on no users available', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     session.steamUser = undefined
     await db.clearDatabase()
     await expect(session.getInternalUser(usersTyped.accounts[0].username)).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
 })
 
 describe('getSession', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -570,7 +574,7 @@ describe('getSession', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -581,7 +585,7 @@ describe('getSession', () => {
     await db.closeDatabase()
   })
   it('Should reject for max tries', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     await expect(session.getSession(4)).rejects.toBeTruthy()
   })
   it('Should return session for existing', async () => {
@@ -591,11 +595,11 @@ describe('getSession', () => {
     expect(sessionObj).toBeTruthy()
     expect(sessionObj.jti).toBe(emptySession.jti)
     expect(sessionObj.last_heartbeat).toBe(now.toISOString())
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   })
   it('Should return same session at same time', async () => {
     session.session = undefined
-    var promises: Promise<Session>[] = []
+    var promises: Array<Promise<SessionType>> = []
     promises.push(session.getSession())
     await new Promise(resolve => setTimeout(resolve, 0))
     promises.push(session.getSession())
@@ -604,30 +608,30 @@ describe('getSession', () => {
     expect(sessionObj1.player_id).toBe(sessionObj2.player_id)
     expect(sessionObj1.jti).toBe(sessionObj2.jti)
     expect(sessionObj1.last_heartbeat).toBe(sessionObj2.last_heartbeat)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for invalid user', async () => {
-    expect.assertions(1);
+    expect.assertions(1)
     await expect(session.getSession(0, 'invalid_user')).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  })
+    await wait(1)
+  }, 20000)
   it('Should reject for banned user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-ba`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-ba`, connector)
     await expect(session.getSession(0, usersTyped.bannedAccount.username)).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  })
+    await wait(1)
+  }, 20000)
   it('Should reject for steam guard user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-sg`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-sg`, connector)
     await expect(session.getSession(0, usersTyped.steamGuardAccount.username)).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
-  })
+    await wait(1)
+  }, 20000)
 })
 
 describe('getPlayerID', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -638,7 +642,7 @@ describe('getPlayerID', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -654,36 +658,36 @@ describe('getPlayerID', () => {
     var playerId = await session.getPlayerID()
     expect(playerId).toBeTruthy()
     expect(playerId).toBe(emptySession.player_id)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return id', async () => {
     var playerId = await session.getPlayerID()
     expect(playerId).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for invalid user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(invalidType, connector)
+    expect.assertions(1)
+    session = new Session(invalidType, connector)
     await expect(session.getPlayerID()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for banned user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-ba`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-ba`, connector)
     await expect(session.getPlayerID()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for steam guard user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-sg`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-sg`, connector)
     await expect(session.getPlayerID()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
 })
 
 describe('getJti', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -694,7 +698,7 @@ describe('getJti', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -710,36 +714,36 @@ describe('getJti', () => {
     var jti = await session.getJti()
     expect(jti).toBeTruthy()
     expect(jti).toBe(emptySession.jti)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return jti', async () => {
     var jti = await session.getJti()
     expect(jti).toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for invalid user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(invalidType, connector)
+    expect.assertions(1)
+    session = new Session(invalidType, connector)
     await expect(session.getJti()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for banned user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-ba`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-ba`, connector)
     await expect(session.getJti()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should reject for steam guard user', async () => {
-    expect.assertions(1);
-    session = new KardsSession(`${accountType}-sg`, connector)
+    expect.assertions(1)
+    session = new Session(`${accountType}-sg`, connector)
     await expect(session.getJti()).rejects.toBeTruthy()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
 })
 
 describe('stopSession', () => {
   var connector: MongoDBSteamUserConnector
-  var session: KardsSession
+  var session: Session
   beforeAll(async () => {
     await db.connect()
   })
@@ -750,7 +754,7 @@ describe('stopSession', () => {
     }
     await connector.addSteamUser(usersTyped.steamGuardAccount.username, usersTyped.steamGuardAccount.password, `${accountType}-sg`)
     await connector.addSteamUser(usersTyped.bannedAccount.username, usersTyped.bannedAccount.password, `${accountType}-ba`)
-    session = new KardsSession(accountType, connector)
+    session = new Session(accountType, connector)
   })
   afterEach(async () => {
     await session.logout()
@@ -764,21 +768,21 @@ describe('stopSession', () => {
     session.session = undefined
     await session.stopSession()
     expect(session.session).toBeUndefined()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return for old session', async () => {
     session.session = emptySession
     session.session.last_heartbeat = date.toISOString()
     await session.stopSession()
     expect(session.session).toBeUndefined()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return for fake session', async () => {
     session.session = emptySession
     session.session.last_heartbeat = (new Date()).toISOString()
     await session.stopSession()
     expect(session.session).toBeUndefined()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
   it('Should return for real session', async () => {
     var jti = await session.getJti()
@@ -786,6 +790,6 @@ describe('stopSession', () => {
     expect(session.session).toBeTruthy()
     await session.stopSession()
     expect(session.session).toBeUndefined()
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await wait(1)
   }, 20000)
 })
