@@ -1,6 +1,6 @@
 {
   "name": "@kards-stats/kards-tools",
-  "version": "0.3.4-alpha",
+  "version": "0.4.0-alpha",
   "description": "Tools for interacting with the kards backend as well as utils used across Kards Stats",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -13,7 +13,7 @@
     "types/*.d.ts"
   ],
   "scripts": {
-    "test": "npm run build && jest --verbose --maxWorkers=1",
+    "test": "npm run build && jest --verbose --maxWorkers=1 --forceExit",
     "build": "npm run clean && tsc",
     "build:check": "npm run clean && tsc --noEmit",
     "lint": "ts-standard --fix",
@@ -45,39 +45,37 @@
   "homepage": "https://github.com/Kards-Stats/kards-tools#readme",
   "ts-standard": {
     "ignore": [
-      "tests/**/*.test.ts"
+      "tests/**/*.test.ts",
+      "tests/**/*.test.ignore.ts"
     ]
   },
   "dependencies": {
     "@apollo/client": "^3.3.21",
-    "@types/follow-redirects": "^1.13.1",
-    "@types/keyv": "^3.1.2",
-    "@types/q": "^1.5.5",
-    "@types/triple-beam": "^1.3.2",
-    "@types/underscore": "^1.11.3",
     "cross-fetch": "^3.1.4",
     "follow-redirects": "^1.14.1",
     "graphql": "^15.5.1",
     "keyv": "^4.0.3",
-    "mongoose": "^5.13.3",
+    "mongodb": "^3.6.11",
+    "mongoose": "^5.13.7",
     "q": "^1.5.1",
     "steam-user": "^4.19.12",
     "toad-scheduler": "^1.5.0",
-    "triple-beam": "^1.3.0",
-    "ts-standard": "^10.0.0",
     "typescript": "^4.3.5",
-    "underscore": "^1.13.1",
     "winston": "^3.3.3",
     "winston-daily-rotate-file": "^4.5.5"
   },
   "devDependencies": {
     "@graphql-codegen/core": "^1.17.10",
     "@graphql-codegen/typescript": "^1.23.0",
+    "@types/follow-redirects": "^1.13.1",
     "@types/jest": "^26.0.24",
+    "@types/keyv": "^3.1.2",
+    "@types/q": "^1.5.5",
     "env-cmd": "^10.1.0",
     "jest": "^27.0.6",
     "mongodb-memory-server": "^7.3.0",
     "ts-jest": "^27.0.3",
-    "ts-node": "^10.1.0"
+    "ts-node": "^10.1.0",
+    "ts-standard": "^10.0.0"
   }
 }
