@@ -23,7 +23,7 @@ const defaultOptions: DefaultOptions = {
   }
 }
 
-export default class KardsVersion {
+export default class Version {
   public keyv: Keyv
   protected client: ApolloClient<NormalizedCacheObject>
   protected cacheTime: number
