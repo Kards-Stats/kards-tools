@@ -20,15 +20,15 @@ export default class KardsApiError extends Error {
 
   static isKardsError (object: any): boolean {
     /*
-        {
-            "error": {
-                "code": "user_error",
-                "description": "Invalid JTI. Token FfeydDogkuhy3hsCckHN3 does not exist."
-            },
-            "message": "Unauthorized",
-            "status_code": 401
-        }
-        */
+    {
+      "error": {
+        "code": "user_error",
+        "description": "Invalid JTI. Token FfeydDogkuhy3hsCckHN3 does not exist."
+      },
+      "message": "Unauthorized",
+      "status_code": 401
+    }
+    */
     try {
       const rootKeys = ['error', 'message', 'status_code']
       var valid = rootKeys.every(key => Object.keys(object).includes(key))
