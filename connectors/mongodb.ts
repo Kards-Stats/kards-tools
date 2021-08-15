@@ -5,7 +5,7 @@ import winston from 'winston'
 import { SteamAccountConnector } from './types'
 import { SteamUser } from '../types/backend'
 import stream from 'stream'
-import mongodb from 'mongodb'
+import { ObjectId, GridFSBucket } from 'mongodb'
 
 const logger: winston.Logger = getCurrentLogger('models-steam-user')
 
@@ -53,7 +53,7 @@ interface SteamUserFilesDocument extends mongoose.Document {
 export default class MongoDBSteamUserConnector implements SteamAccountConnector {
   SteamUserModel: mongoose.Model<SteamUserDocument>
   SteamUserFilesModel: mongoose.Model<SteamUserFilesDocument>
-  bucket: mongodb.GridFSBucket
+  bucket: GridFSBucket
 
   constructor (collectionName: string, connection: mongoose.Connection) {
     if (connection === null || connection.readyState !== 1) {
@@ -61,8 +61,8 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
     }
     this.SteamUserModel = connection.model(collectionName, SteamUserSchema) as any as mongoose.Model<SteamUserDocument>
     this.SteamUserFilesModel = connection.model(`${collectionName}_files`, SteamUserFileSchema) as any as mongoose.Model<SteamUserFilesDocument>
-    this.bucket = new mongodb.GridFSBucket(connection.db, {
-      bucketName: 'photos'
+    this.bucket = new GridFSBucket(connection.db, {
+      bucketName: `${collectionName}_files`
     })
   }
 
@@ -228,13 +228,15 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
   async saveFile (filename: string, contents: Buffer): Promise<void> {
     const deferred = Q.defer()
     // Covert buffer to Readable Stream
-    const readablePhotoStream = new stream.Readable()
-    readablePhotoStream.push(contents)
-    readablePhotoStream.push(null)
+    const readableStream = new stream.Readable()
+    readableStream.push(contents)
+    readableStream.push(null)
     const uploadStream = this.bucket.openUploadStream(filename)
     const id = uploadStream.id.toLocaleString()
-    readablePhotoStream.pipe(uploadStream)
+    // Have to ignore typing here as a solution couldnt be found
+    readableStream.pipe(uploadStream as any)
     uploadStream.on('error', () => {
+      /* istanbul ignore next */
       return deferred.reject(new Error('Error updating steam account file'))
     })
     uploadStream.on('finish', () => {
@@ -253,26 +255,14 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
         file.save().then(() => {
           return deferred.resolve()
         }).catch((e) => {
+          /* istanbul ignore next */
           return deferred.reject(e)
         })
       }).catch((e) => {
+        /* istanbul ignore next */
         return deferred.reject(e)
       })
     })
-    /*
-    var writestream = this.gridFS.createWriteStream({
-      filename: filename
-    })
-    writestream.on('close', () => {
-      return deferred.resolve()
-    })
-    writestream.on('error', (error) => {
-      return deferred.reject(error)
-    })
-    var bufferStream = new stream.PassThrough()
-    bufferStream.end(contents)
-    bufferStream.pipe(writestream)
-    */
     return deferred.promise as any as Promise<void>
   }
 
@@ -283,8 +273,9 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
         deferred.resolve(null)
       } else {
         try {
-          var id = new mongodb.ObjectID(file.id)
+          var id = new ObjectId(file.id)
         } catch (e) {
+          /* istanbul ignore next */
           return deferred.reject(e)
         }
         const downloadStream = this.bucket.openDownloadStream(id)
@@ -293,6 +284,7 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
           fileData.push(chunk)
         })
         downloadStream.on('error', () => {
+          /* istanbul ignore next */
           return deferred.reject(new Error('Error getting steam account file'))
         })
         downloadStream.on('end', () => {
@@ -300,12 +292,14 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
         })
       }
     }).catch((e) => {
+      /* istanbul ignore next */
       return deferred.reject(e)
     })
     return deferred.promise as any as Promise<Buffer | null>
   }
 }
 
+/* istanbul ignore next */
 export function getMongooseConfig (prefix: string = 'mdb_', ssl: boolean = false): string {
   var userString = ''
   if (process.env[`${prefix}username`] !== undefined &&
