@@ -1,35 +1,35 @@
 import * as logger from 'winston'
 import 'winston-daily-rotate-file'
 import { isMaster } from 'cluster'
-import _ from 'underscore'
-import { SPLAT } from 'triple-beam'
-
-const SPLAT_STRING: string = SPLAT as any
 
 var loggers: Map<string, logger.Logger> = new Map()
 
 export function formatObject (param: any): string {
-  if (_.isObject(param)) {
-    if (_.has(param, 'message')) {
-      return param.message
-    }
-    return JSON.stringify(param)
-  }
   if (param === undefined) {
     return 'undefined'
   }
   if (param === null) {
     return 'null'
   }
+  if (typeof param === 'object') {
+    if (Object.prototype.hasOwnProperty.call(param, 'message')) {
+      return param.message
+    }
+    return JSON.stringify(param)
+  }
   return param.toString()
 }
 
 /* istanbul ignore start */
 const all = logger.format((info: any) => {
-  const splat: any[] = info[SPLAT_STRING] ?? []
-  const message = formatObject(info.message)
-  const rest: string = splat.map(formatObject).join(' ')
-  info.message = `${message} ${rest}`.trim()
+  const message: any = info.message
+  if (info.data !== undefined) {
+    /* istanbul ignore next 2 */
+    info.message = `${formatObject(message)} ${JSON.stringify(info.data)}`
+    delete info.data
+  } else {
+    info.message = `${formatObject(message)}`
+  }
   return info
 })
 /* istanbul ignore stop */
@@ -77,6 +77,9 @@ export function getConfig (label: string): logger.LoggerOptions {
   return {
     levels: levelsObj,
     format: logger.format.combine(
+      logger.format.errors({ stack: true }),
+      logger.format.timestamp({ format: 'DD-MM-YYYY HH:mm:ss' }),
+      logger.format.label({ label: label }),
       all(),
       logger.format.json()
     ),
@@ -85,9 +88,6 @@ export function getConfig (label: string): logger.LoggerOptions {
         level: consoleLevel,
         format: logger.format.combine(
           logger.format.colorize(),
-          logger.format.timestamp({ format: 'DD-MM-YYYY HH:mm:ss' }),
-          logger.format.label({ label: label }),
-          logger.format.errors({ stack: true }),
           logger.format.printf((msg) => {
             /* istanbul ignore next 2 */
             const msgTyped: CustomTransformableInfo = msg as CustomTransformableInfo
@@ -102,9 +102,6 @@ export function getConfig (label: string): logger.LoggerOptions {
         maxSize: '20m',
         maxFiles: '14d',
         format: logger.format.combine(
-          logger.format.timestamp({ format: 'DD-MM-YYYY HH:mm:ss' }),
-          logger.format.label({ label: label }),
-          logger.format.errors({ stack: true }),
           logger.format.printf((msg) => {
             /* istanbul ignore next 2 */
             const msgTyped: CustomTransformableInfo = msg as CustomTransformableInfo
