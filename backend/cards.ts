@@ -8,7 +8,7 @@ import { Card as CardType, Cards as CardsType } from '../types/backend'
 import winston from 'winston'
 import Keyv from 'keyv'
 
-const logger: winston.Logger = getCurrentLogger('includes-card')
+const logger: winston.Logger = getCurrentLogger('backend-card')
 
 const oneDay: number = 24 * 60 * 60 * 60 * 1000
 

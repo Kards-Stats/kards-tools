@@ -1,6 +1,6 @@
 {
   "name": "@kards-stats/kards-tools",
-  "version": "0.4.2-alpha",
+  "version": "0.4.3-alpha",
   "description": "Tools for interacting with the kards backend as well as utils used across Kards Stats",
   "main": "build/index.js",
   "types": "build/index.d.ts",

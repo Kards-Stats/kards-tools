@@ -282,10 +282,11 @@ export default class Session {
       if (steamUser === null) {
         throw new Error('No more steam accounts to use')
       }
-      if (steamUser.ticket === undefined || steamUser.steam_id === undefined) {
+      if (steamUser.ticket === undefined || steamUser.ticket === '' || steamUser.steam_id === undefined || steamUser.steam_id === '') {
         this.logger.silly('steam values empty')
         try {
-          await this.refreshSteam(steamUser.username)
+          var ticket = await this.refreshSteam(steamUser.username)
+          steamUser.ticket = ticket
         } catch (e) {
           this.logger.warn(e)
           if (fallback !== 'oldest') {
