@@ -24,5 +24,10 @@
         "declaration": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-    }
+    },
+    "exclude": [
+        "tests/**",
+        "**/*.test.ts",
+        "**/*.ignore.ts"
+    ]
 }
