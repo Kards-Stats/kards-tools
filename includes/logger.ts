@@ -15,7 +15,16 @@ export function formatObject (param: any): string {
     if (Object.prototype.hasOwnProperty.call(param, 'message')) {
       return param.message
     }
-    return JSON.stringify(param)
+    var cache: any[] | null = []
+    var result = JSON.stringify(param, (_, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache?.includes(value) ?? false) return
+        cache?.push(value)
+      }
+      return value
+    })
+    cache = null
+    return result
   }
   return param.toString()
 }
