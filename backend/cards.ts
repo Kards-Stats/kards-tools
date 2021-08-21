@@ -35,7 +35,7 @@ export default class Cards {
     options = defaultOptions,
     cache = new InMemoryCache()
   ) {
-    logger.silly('Generating cards')
+    logger.silly(`Cards(${version}, ${backendUri}, ${cacheTime}, ${JSON.stringify(options)})`)
     this.keyv = new Keyv({ namespace: version.toString() })
     this.client = new ApolloClient({
       uri: backendUri,
