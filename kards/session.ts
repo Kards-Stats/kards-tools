@@ -285,14 +285,22 @@ export default class Session {
       if (steamUser.ticket === undefined || steamUser.ticket === '' || steamUser.steam_id === undefined || steamUser.steam_id === '') {
         this.logger.silly('steam values empty')
         try {
-          var ticket = await this.refreshSteam(steamUser.username)
-          steamUser.ticket = ticket
+          var tempUser = await this.refreshSteam(steamUser.username)
+          if (tempUser === null) {
+            if (fallback !== 'oldest') {
+              await this.connector.addSteamLogin(steamUser.username, steamUser.steam_id ?? '', steamUser.ticket ?? '')
+              return await this.getInternalUser('oldest')
+            }
+            throw new Error('Refresh Steam returned null')
+          }
+          this.steamUser = tempUser
         } catch (e) {
           this.logger.warn(e)
           if (fallback !== 'oldest') {
             await this.connector.addSteamLogin(steamUser.username, steamUser.steam_id ?? '', steamUser.ticket ?? '')
             return await this.getInternalUser('oldest')
           }
+          throw e
         }
       } else {
         /* istanbul ignore next */
@@ -302,10 +310,10 @@ export default class Session {
           ticket: steamUser.ticket
         }
       }
-      if (this.steamUser === undefined) {
-        /* istanbul ignore next */
-        throw new Error('Session steam user has been corrupted before return')
-      } // else if (this.steamUser.ticket === undefined) {
+      // if (this.steamUser === undefined) {
+      /* istanbul ignore next */
+      // throw new Error('Session steam user has been corrupted before return')
+      // } // else if (this.steamUser.ticket === undefined) {
       /* istanbul ignore next */
       // throw new Error('Session steam user has not been able to get ticket before return')
       // }
@@ -373,16 +381,16 @@ export default class Session {
     return false
   }
 
-  async refreshSteam (username: string, force: boolean = false, waitTime: number = tenMinutes): Promise<string> {
-    this.logger.silly(`refreshSteam(${username})`)
+  async refreshSteam (username: string, force: boolean = false, waitTime: number = tenMinutes): Promise<InternalSteamUser | null> {
+    this.logger.silly(`refreshSteam(${username}, ${force ? 'true' : 'false'}, ${waitTime})`)
     var steamUser = await this.connector.getUser(username)
-    if (steamUser == null) {
+    if (steamUser === null) {
       throw new Error('No steam user found')
     }
     const timeSinceLogin = (new Date()).getTime() - steamUser.last_steam_login.getTime()
     if (timeSinceLogin <= waitTime) {
       // Login less than 10 minutes ago, dont refresh to avoid limit bans
-      return ''
+      return null
     }
     var internalUser: InternalSteamUser = await this.login(steamUser, force)
     var ticket = await this.getSteamTicket()
@@ -392,7 +400,7 @@ export default class Session {
       steam_id: internalUser.steam_id,
       ticket
     }
-    return ticket
+    return this.steamUser
   }
 
   async getSteamTicket (): Promise<string> {
@@ -418,7 +426,7 @@ export default class Session {
       /* istanbul ignore next */
       return deferred.reject(error)
     })
-    return deferred.promise as any as Promise<string>
+    return await (deferred.promise as any as Promise<string>)
   }
 
   async login (steamUser: SteamUserType, relog: boolean = false, tryNumber: number = 0): Promise<InternalSteamUser> {
@@ -484,7 +492,7 @@ export default class Session {
         })
       })
     }
-    return deferred.promise as any as Promise<InternalSteamUser>
+    return await (deferred.promise as any as Promise<InternalSteamUser>)
   }
 
   async logout (): Promise<void> {
@@ -500,6 +508,6 @@ export default class Session {
     this.steamUserObject.logOff()
     this.steamUserObject.accountInfo = undefined
     this.steamUser = undefined
-    return deferred.promise as any as Promise<void>
+    return await (deferred.promise as any as Promise<void>)
   }
 }

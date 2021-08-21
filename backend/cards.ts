@@ -66,7 +66,7 @@ export default class Cards {
       logger.error(e)
       return deferred.reject(e)
     })
-    return deferred.promise as any as Promise<CardType | undefined>
+    return await (deferred.promise as any as Promise<CardType | undefined>)
   }
 
   async getCards (): Promise<CardsType | undefined> {
@@ -137,6 +137,6 @@ export default class Cards {
     }).catch((e) => {
       return deferred.reject(e)
     })
-    return deferred.promise as any as Promise<CardsType | undefined>
+    return await (deferred.promise as any as Promise<CardsType | undefined>)
   }
 }
