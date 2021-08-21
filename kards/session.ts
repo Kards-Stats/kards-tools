@@ -422,8 +422,8 @@ export default class Session {
       return deferred.resolve(ticket.toString('hex'))
     })
 
-    this.steamUserObject.on('error', function (error: any) {
-      /* istanbul ignore next */
+    this.steamUserObject.once('error', (error: any) => {
+      this.steamUserObject.removeAllListeners(['error'])
       return deferred.reject(error)
     })
     return await (deferred.promise as any as Promise<string>)
@@ -462,8 +462,9 @@ export default class Session {
         })
       }
     } else {
-      this.steamUserObject.on('steamGuard', () => {
+      this.steamUserObject.once('steamGuard', () => {
         this.logger.warn(`Steam guard left on for user ${steamUser.username}`)
+        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
         return deferred.reject(`Steam guard left on for user ${steamUser.username}`)
       })
       this.steamUserObject.logOn({
@@ -472,19 +473,21 @@ export default class Session {
         rememberPassword: true,
         logonID: getRandomInt()
       })
-      this.steamUserObject.on('loggedOn', (details: any) => {
+      this.steamUserObject.once('loggedOn', (details: any) => {
         this.logger.silly('loggedOn')
         this.steamUser = {
           username: steamUser.username,
           steam_id: details.client_supplied_steamid
         }
+        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
         return deferred.resolve(this.steamUser)
       })
 
       /* istanbul ignore next */
-      this.steamUserObject.on('error', (error: any) => {
+      this.steamUserObject.once('error', (error: any) => {
         this.logger.silly('steam login error')
         this.logger.warn(error)
+        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
         this.login(steamUser, relog, tryNumber + 1).then((user) => {
           return deferred.resolve(user)
         }).catch((e) => {
@@ -501,8 +504,8 @@ export default class Session {
     if (!this.isLoggedIn()) {
       return
     }
-    this.steamUserObject.on('disconnected', () => {
-      this.steamUserObject.on('disconnected', () => {})
+    this.steamUserObject.once('disconnected', () => {
+      this.steamUserObject.removeAllListeners(['disconnected'])
       return deferred.resolve()
     })
     this.steamUserObject.logOff()
