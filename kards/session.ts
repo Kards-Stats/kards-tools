@@ -423,10 +423,40 @@ export default class Session {
     })
 
     this.steamUserObject.once('error', (error: any) => {
-      this.steamUserObject.removeAllListeners(['error'])
+      this.steamUserObject.removeAllListeners('error')
       return deferred.reject(error)
     })
     return await (deferred.promise as any as Promise<string>)
+  }
+
+  async waitForAccountInfo (): Promise<void> {
+    this.logger.silly('waitForAccountInfo()')
+    if (this.steamUserObject === undefined) {
+      throw new Error('waitForAccountInfo steamUserObject undefined')
+    }
+    if (this.steamUserObject.accountInfo !== undefined &&
+      this.steamUserObject.accountInfo !== null) {
+      return
+    }
+    return await new Promise<void>((resolve, reject) => {
+      var called = false
+      var handler = (): void => {
+        called = true
+        clearTimeout(timer)
+        return resolve()
+      }
+      var timer = setTimeout(() => {
+        this.steamUserObject.removeListener(handler)
+        if (this.steamUserObject?.accountInfo !== undefined &&
+          this.steamUserObject?.accountInfo !== null) {
+          return resolve()
+        }
+        if (!called) {
+          return reject(new Error('waitForAccountInfo Timeout'))
+        }
+      }, 5)
+      this.steamUserObject.once('accountInfo', handler)
+    })
   }
 
   async login (steamUser: SteamUserType, relog: boolean = false, tryNumber: number = 0): Promise<InternalSteamUser> {
@@ -464,7 +494,9 @@ export default class Session {
     } else {
       this.steamUserObject.once('steamGuard', () => {
         this.logger.warn(`Steam guard left on for user ${steamUser.username}`)
-        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
+        this.steamUserObject.removeAllListeners('error')
+        this.steamUserObject.removeAllListeners('loggedOn')
+        this.steamUserObject.removeAllListeners('steamGuard')
         return deferred.reject(`Steam guard left on for user ${steamUser.username}`)
       })
       this.steamUserObject.logOn({
@@ -474,20 +506,29 @@ export default class Session {
         logonID: getRandomInt()
       })
       this.steamUserObject.once('loggedOn', (details: any) => {
-        this.logger.silly('loggedOn')
-        this.steamUser = {
-          username: steamUser.username,
-          steam_id: details.client_supplied_steamid
-        }
-        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
-        return deferred.resolve(this.steamUser)
+        this.waitForAccountInfo().then(() => {
+          this.logger.silly('loggedOn')
+          this.steamUser = {
+            username: steamUser.username,
+            steam_id: details.client_supplied_steamid
+          }
+          this.steamUserObject.removeAllListeners('error')
+          this.steamUserObject.removeAllListeners('loggedOn')
+          this.steamUserObject.removeAllListeners('steamGuard')
+          return deferred.resolve(this.steamUser)
+        }).catch((e) => {
+          this.logger.warn(e)
+          return deferred.reject(e)
+        })
       })
 
       /* istanbul ignore next */
       this.steamUserObject.once('error', (error: any) => {
         this.logger.silly('steam login error')
         this.logger.warn(error)
-        this.steamUserObject.removeAllListeners(['error', 'loggedOn', 'steamGuard'])
+        this.steamUserObject.removeAllListeners('error')
+        this.steamUserObject.removeAllListeners('loggedOn')
+        this.steamUserObject.removeAllListeners('steamGuard')
         this.login(steamUser, relog, tryNumber + 1).then((user) => {
           return deferred.resolve(user)
         }).catch((e) => {
@@ -505,7 +546,7 @@ export default class Session {
       return
     }
     this.steamUserObject.once('disconnected', () => {
-      this.steamUserObject.removeAllListeners(['disconnected'])
+      this.steamUserObject.removeAllListeners('disconnected')
       return deferred.resolve()
     })
     this.steamUserObject.logOff()
