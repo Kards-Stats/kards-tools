@@ -1,13 +1,11 @@
 import { getCurrentLogger } from '../includes/logger'
-import Q from 'q'
 import mongoose from 'mongoose'
-import winston from 'winston'
 import { SteamAccountConnector } from './types'
 import { SteamUser } from '../types/backend'
 import stream from 'stream'
 import { ObjectId, GridFSBucket } from 'mongodb'
 
-const logger: winston.Logger = getCurrentLogger('models-steam-user')
+const logger = getCurrentLogger('models-steam-user')
 
 const Schema = mongoose.Schema
 
@@ -118,184 +116,139 @@ export default class MongoDBSteamUserConnector implements SteamAccountConnector 
 
   async getUnbanned (type = '*'): Promise<Array<SteamUser | null>> {
     logger.silly(`getUnbanned(${type})`)
-    const deferred = Q.defer()
     const query = type !== '*' ? { type: type, banned: false } : { banned: false }
-    this.SteamUserModel.find(query).then((results: SteamUserDocument[]) => {
-      return deferred.resolve(this.formatSteamUsers(results))
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<Array<SteamUser | null>>
+    var results = await this.SteamUserModel.find(query)
+    return this.formatSteamUsers(results)
   }
 
   async getUser (user: string): Promise<SteamUser | null> {
     logger.silly(`getUser(${user})`)
-    const deferred = Q.defer()
     const query = { username: user }
-    this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
-      return deferred.resolve(this.formatSteamUser(result))
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var result = await this.SteamUserModel.findOne(query)
+    return this.formatSteamUser(result)
   }
 
   async getOldest (type = '*'): Promise<SteamUser | null> {
     logger.silly(`getOldest(${type})`)
-    const deferred = Q.defer()
     const query = type !== '*' ? { type: type, banned: false } : { banned: false }
-    this.SteamUserModel.findOne(query, null, { sort: { last_steam_login: 1 } }).then((result: SteamUserDocument | null) => {
-      return deferred.resolve(this.formatSteamUser(result))
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var result = await this.SteamUserModel.findOne(query, null, { sort: { last_steam_login: 1 } })
+    return this.formatSteamUser(result)
   }
 
   async addSteamLogin (user: string, steamId: string, ticket: string): Promise<SteamUser | null> {
     logger.silly(`addSteamLogin(${user}, ${steamId}, ${ticket})`)
-    const deferred = Q.defer()
     const query = { username: user }
-    this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
-      if (result === null) {
-        return deferred.resolve(null)
-      }
-      result.last_steam_login = new Date()
-      result.steam_id = steamId
-      result.ticket = ticket
-      result.save().then(() => {
-        return deferred.resolve(this.formatSteamUser(result))
-      }).catch((e) => {
-        /* istanbul ignore next */
-        return deferred.reject(e)
-      })
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var result = await this.SteamUserModel.findOne(query)
+    if (result === null) {
+      return null
+    }
+    result.last_steam_login = new Date()
+    result.steam_id = steamId
+    result.ticket = ticket
+    await result.save()
+    return this.formatSteamUser(result)
   }
 
   async setBanned (user: string, banned: boolean): Promise<SteamUser | null> {
     logger.silly(`setBanned(${user}, ${banned ? 'true' : 'false'})`)
-    const deferred = Q.defer()
     const query = { username: user }
-    this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
-      if (result === null) {
-        return deferred.resolve(null)
-      }
-      result.banned = banned
-      result.steam_id = undefined
-      result.ticket = undefined
-      result.save().then(() => {
-        return deferred.resolve(this.formatSteamUser(result))
-      }).catch((e) => {
-        /* istanbul ignore next */
-        return deferred.reject(e)
-      })
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var result = await this.SteamUserModel.findOne(query)
+    if (result === null) {
+      return null
+    }
+    result.banned = banned
+    result.steam_id = undefined
+    result.ticket = undefined
+    await result.save()
+    return this.formatSteamUser(result)
   }
 
   async addKardsLogin (user: string): Promise<SteamUser | null> {
     logger.silly(`addKardsLogin(${user})`)
-    const deferred = Q.defer()
     const query = { username: user }
-    this.SteamUserModel.findOne(query).then((result: SteamUserDocument | null) => {
-      if (result === null) {
-        return deferred.resolve(null)
-      }
-      result.last_kards_login = new Date()
-      result.save().then(() => {
-        return deferred.resolve(this.formatSteamUser(result))
-      }).catch((e) => {
-        /* istanbul ignore next */
-        return deferred.reject(e)
-      })
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<SteamUser | null>
+    var result = await this.SteamUserModel.findOne(query)
+    if (result === null) {
+      return null
+    }
+    result.last_kards_login = new Date()
+    await result.save()
+    return this.formatSteamUser(result)
   }
 
   async saveFile (filename: string, contents: Buffer): Promise<void> {
-    const deferred = Q.defer()
-    // Covert buffer to Readable Stream
-    const readableStream = new stream.Readable()
-    readableStream.push(contents)
-    readableStream.push(null)
-    const uploadStream = this.bucket.openUploadStream(filename)
-    const id = uploadStream.id.toLocaleString()
-    // Have to ignore typing here as a solution couldnt be found
-    readableStream.pipe(uploadStream as any)
-    uploadStream.on('error', () => {
-      /* istanbul ignore next */
-      return deferred.reject(new Error('Error updating steam account file'))
-    })
-    uploadStream.on('finish', () => {
-      this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
-        if (file === null) {
-          file = new this.SteamUserFilesModel({
-            filename: filename,
-            id: id
+    return await new Promise<void>((resolve, reject) => {
+      const readableStream = new stream.Readable()
+      readableStream.push(contents)
+      readableStream.push(null)
+      const uploadStream = this.bucket.openUploadStream(filename)
+      const id = uploadStream.id.toLocaleString()
+      // Have to ignore typing here as a solution couldnt be found
+      readableStream.pipe(uploadStream as any)
+      uploadStream.once('error', () => {
+        /* istanbul ignore next */
+        uploadStream.removeAllListeners('error')
+        uploadStream.removeAllListeners('finish')
+        return reject(new Error('Error updating steam account file'))
+      })
+      uploadStream.once('finish', () => {
+        uploadStream.removeAllListeners('error')
+        uploadStream.removeAllListeners('finish')
+        this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
+          if (file === null) {
+            file = new this.SteamUserFilesModel({
+              filename: filename,
+              id: id
+            })
+          } else {
+            file.overwrite({
+              filename: filename,
+              id: id
+            })
+          }
+          file.save().then(() => {
+            return resolve()
+          }).catch((e) => {
+            /* istanbul ignore next */
+            return reject(e)
           })
-        } else {
-          file.overwrite({
-            filename: filename,
-            id: id
-          })
-        }
-        file.save().then(() => {
-          return deferred.resolve()
         }).catch((e) => {
           /* istanbul ignore next */
-          return deferred.reject(e)
+          return reject(e)
         })
-      }).catch((e) => {
-        /* istanbul ignore next */
-        return deferred.reject(e)
       })
     })
-    return deferred.promise as any as Promise<void>
   }
 
   async readFile (filename: string): Promise<Buffer | null> {
-    const deferred = Q.defer()
-    this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
-      if (file === null) {
-        deferred.resolve(null)
-      } else {
-        try {
-          var id = new ObjectId(file.id)
-        } catch (e) {
-          /* istanbul ignore next */
-          return deferred.reject(e)
+    return await new Promise<Buffer | null>((resolve, reject) => {
+      this.SteamUserFilesModel.findOne({ filename: filename }).then((file) => {
+        if (file === null) {
+          return resolve(null)
+        } else {
+          try {
+            var id = new ObjectId(file.id)
+          } catch (e) {
+            /* istanbul ignore next */
+            return reject(e)
+          }
+          const downloadStream = this.bucket.openDownloadStream(id)
+          var fileData: Uint8Array[] = []
+          downloadStream.on('data', (chunk) => {
+            fileData.push(chunk)
+          })
+          downloadStream.on('error', () => {
+            /* istanbul ignore next */
+            return reject(new Error('Error getting steam account file'))
+          })
+          downloadStream.on('end', () => {
+            return resolve(Buffer.concat(fileData))
+          })
         }
-        const downloadStream = this.bucket.openDownloadStream(id)
-        var fileData: Uint8Array[] = []
-        downloadStream.on('data', (chunk) => {
-          fileData.push(chunk)
-        })
-        downloadStream.on('error', () => {
-          /* istanbul ignore next */
-          return deferred.reject(new Error('Error getting steam account file'))
-        })
-        downloadStream.on('end', () => {
-          return deferred.resolve(Buffer.concat(fileData))
-        })
-      }
-    }).catch((e) => {
-      /* istanbul ignore next */
-      return deferred.reject(e)
+      }).catch((e) => {
+        /* istanbul ignore next */
+        return reject(e)
+      })
     })
-    return deferred.promise as any as Promise<Buffer | null>
   }
 }
 

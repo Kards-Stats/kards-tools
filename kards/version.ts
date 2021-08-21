@@ -4,11 +4,9 @@ import { InMemoryCache, NormalizedCacheObject } from '@apollo/client/cache'
 import { DefaultOptions } from '@apollo/client'
 import { getCurrentLogger } from '../includes/logger'
 import { GameVersion } from '../types/kards-web'
-import Q from 'q'
-import winston from 'winston'
 import Keyv from 'keyv'
 
-const logger: winston.Logger = getCurrentLogger('includes-version')
+const logger = getCurrentLogger('includes-version')
 
 const oneDay: number = 24 * 60 * 60 * 60 * 1000
 
@@ -48,45 +46,37 @@ export default class Version {
   }
 
   async getVersion (): Promise<number | undefined> {
-    const deferred = Q.defer()
-    this.keyv.get(this.key).then((version: number | undefined) => {
-      if (version === undefined) {
-        logger.silly('no version')
-        this.client.query({
-          query: gql`
-            query {
-              currentGameVersion {
-                id
-              }
+    var version = await this.keyv.get(this.key)
+    if (version === undefined) {
+      logger.silly('no version')
+      var result: ApolloQueryResult<{
+        currentGameVersion: GameVersion
+      }> = await this.client.query({
+        query: gql`
+          query {
+            currentGameVersion {
+              id
             }
-          `
-        }).then((result: ApolloQueryResult<{
-          currentGameVersion: GameVersion
-        }>) => {
-          logger.debug(result)
-          if (result.error != null || result.errors != null) {
-            logger.error(result.error ?? result.errors)
-            return deferred.reject(result.error ?? result.errors)
-          } else if (result.data.currentGameVersion === undefined || result.data.currentGameVersion.id === undefined) {
-            logger.warn('No kards version found')
-            return deferred.resolve(undefined)
-          } else {
-            this.keyv.set(this.key, result.data.currentGameVersion.id, oneDay).then(() => {
-              return deferred.resolve(result.data.currentGameVersion.id)
-            }).catch((e) => {
-              return deferred.reject(e)
-            })
           }
-        }).catch((e) => {
-          logger.error(e)
-          return deferred.reject(e)
-        })
+        `
+      })
+      logger.debug(result)
+      if (result.error != null || result.errors != null) {
+        logger.error(result.error ?? result.errors)
+        var errors = result.error?.message ?? ''
+        for (var entry of result.errors ?? []) {
+          errors += errors === '' ? entry.message : `, ${entry.message}`
+        }
+        throw new Error(errors)
+      } else if (result.data.currentGameVersion === undefined || result.data.currentGameVersion.id === undefined) {
+        logger.warn('No kards version found')
+        return undefined
       } else {
-        return deferred.resolve(version)
+        await this.keyv.set(this.key, result.data.currentGameVersion.id, oneDay)
+        return result.data.currentGameVersion.id
       }
-    }).catch((e) => {
-      return deferred.reject(e)
-    })
-    return deferred.promise as any as Promise<number | undefined>
+    } else {
+      return version
+    }
   }
 }

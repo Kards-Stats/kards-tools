@@ -2,15 +2,13 @@ import 'cross-fetch/polyfill'
 import { ApolloClient, gql } from '@apollo/client/core'
 import { InMemoryCache } from '@apollo/client/cache'
 import { getCurrentLogger } from './includes/logger'
-import Q from 'q'
-import winston from 'winston'
 import { buildSchema, printSchema, parse, GraphQLSchema } from 'graphql'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as typescriptPlugin from '@graphql-codegen/typescript'
 import { codegen } from '@graphql-codegen/core'
 
-const logger: winston.Logger = getCurrentLogger('generate-types')
+const logger = getCurrentLogger('generate-types')
 
 const client = new ApolloClient({
   uri: 'https://api.kards.com/graphql',
@@ -28,26 +26,27 @@ const client = new ApolloClient({
 })
 
 async function getSchema (): Promise<string | undefined> {
-  const deferred = Q.defer()
-  client.query({
-    query: gql`query { _service { sdl } }`
-  }).then((result) => {
+  try {
+    var result = await client.query({ query: gql`query { _service { sdl } }` })
     logger.debug(result)
     if (result.error != null || result.errors != null) {
       logger.warn(result.error ?? result.errors)
-      return deferred.reject(result.error ?? result.errors)
+      var errors = result.error?.message ?? ''
+      for (var entry of result.errors ?? []) {
+        errors += errors === '' ? entry.message : `, ${entry.message}`
+      }
+      throw new Error(errors)
     } else if (result.data._service === undefined || result.data._service.sdl === undefined) {
       logger.warn('No kards version found')
-      return deferred.resolve(undefined)
+      return undefined
     } else {
       logger.silly('Preparing output')
-      return deferred.resolve(result.data._service.sdl.replace(/\\n/g, ''))
+      return result.data._service.sdl.replace(/\\n/g, '')
     }
-  }).catch((e) => {
+  } catch (e) {
     logger.error(e)
-    return deferred.reject(e)
-  })
-  return deferred.promise as any as Promise<string | undefined>
+    throw e
+  }
 }
 
 getSchema().then((schemaString) => {

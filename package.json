@@ -45,6 +45,7 @@
   "homepage": "https://github.com/Kards-Stats/kards-tools#readme",
   "ts-standard": {
     "ignore": [
+      "tests/**",
       "tests/**/*.test.ts",
       "tests/**/*.test.ignore.ts"
     ]

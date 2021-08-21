@@ -92,7 +92,7 @@ export default class Requester {
       request.write(data)
     }
     request.end()
-    return deferred.promise as any as Promise<Keyable | string>
+    return await (deferred.promise as any as Promise<Keyable | string>)
   }
 
   public async request (method: string, path: string, authenticated: boolean = false, data?: string): Promise<Keyable | string> {
