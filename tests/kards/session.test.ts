@@ -333,7 +333,7 @@ describe('refreshSteam', () => {
     expect(ticket).toBeTruthy()
     await wait(1)
     ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
-    expect(ticket).toBe('')
+    expect(ticket).toBe(null)
     await new Promise(resolve => setTimeout(resolve, 5000))
     ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
     expect(ticket).toBeTruthy()
@@ -541,14 +541,15 @@ describe('getInternalUser', () => {
   })
   it('Should return InternalUser for user without re auth', async () => {
     session.steamUser = undefined
-    var ticket = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
+    var refreshedUser = await session.refreshSteam(usersTyped.accounts[0].username, false, 5000)
     var user = await session.getInternalUser(usersTyped.accounts[0].username)
+    expect(refreshedUser).toBeTruthy()
     expect(user).toBeTruthy()
     expect(session.authenticating).toBe(false)
-    if (user !== undefined) {
+    if (user !== undefined && refreshedUser !== null) {
       expect(user.username).toBe(usersTyped.accounts[0].username)
       expect(user.steam_id).toBeTruthy()
-      expect(user.ticket).toBe(ticket)
+      expect(user.ticket).toBe(refreshedUser.ticket)
     }
     await wait(1)
   })
