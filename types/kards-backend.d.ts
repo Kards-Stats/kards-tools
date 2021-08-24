@@ -231,7 +231,7 @@ interface XAction {
   action_type: string
   player_id: number
   side: string
-  sub_actions?: ZAction[]
+  sub_actions?: ZAction[] | null
   turn_number: number
   action_data: ActionData
 }
