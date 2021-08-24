@@ -446,7 +446,7 @@ export default class Session {
         return resolve()
       }
       var timer = setTimeout(() => {
-        this.steamUserObject.removeListener(handler)
+        this.steamUserObject.removeAllListeners(handler)
         if (this.steamUserObject?.accountInfo !== undefined &&
           this.steamUserObject?.accountInfo !== null) {
           return resolve()
