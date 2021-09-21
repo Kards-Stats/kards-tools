@@ -1,7 +1,7 @@
 import 'cross-fetch/polyfill'
 import { ApolloClient, gql } from '@apollo/client/core'
 import { InMemoryCache } from '@apollo/client/cache'
-import { getCurrentLogger } from './includes/logger'
+import { getCurrentLogger } from './src/includes/logger'
 import { buildSchema, printSchema, parse, GraphQLSchema } from 'graphql'
 import * as fs from 'fs'
 import * as path from 'path'

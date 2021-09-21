@@ -223,6 +223,8 @@ interface ActionData {
   attacker_card_name?: string
   defenderCardID?: number
   defender_card_name?: string
+  cardSelectingTarget?: number
+  targetCard?: number
   [key: string]: any
 }
 
@@ -285,6 +287,7 @@ interface ZAction {
   damage?: number
   destroyed?: number | string
   discarderID?: number
+  costToAdd?: number
   lost?: number
   cardIDs?: number | string
   damageReceived?: string
@@ -293,6 +296,7 @@ interface ZAction {
   destroyerID?: number
   cardsToDestroy?: string
   newLocation?: string
+  newLocationNumber?: number
   [key: string]: any
 }
 
